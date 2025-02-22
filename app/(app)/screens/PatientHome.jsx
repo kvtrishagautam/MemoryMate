@@ -1,6 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+
+
+
 
 const MenuItem = ({ icon, label, onPress }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -10,6 +14,12 @@ const MenuItem = ({ icon, label, onPress }) => (
 );
 
 const PatientHome = () => {
+  const router = useRouter();
+  
+  const navigateToTask = () => {
+    router.push('/(app)/task');
+  };
+
   const userInfo = {
     name: 'Elsa',
     age: 30,
@@ -51,7 +61,7 @@ const PatientHome = () => {
         <MenuItem
           icon={require('../../../assets/images/tasks.png')}
           label="Daily tasks"
-          onPress={() => {}}
+          onPress={navigateToTask}
         />
         <MenuItem
           icon={require('../../../assets/images/tasks.png')}

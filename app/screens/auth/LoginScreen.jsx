@@ -10,7 +10,7 @@ const LoginScreen = () => {
   const handleLogin = () => {
     // Here we'll add Firebase authentication
     // For now, just navigate to home
-    router.push('/(app)/patient/home');
+    router.push('/(app)/screens/PatientHome');
   };
 
   return (
