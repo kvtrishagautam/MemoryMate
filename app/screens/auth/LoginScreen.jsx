@@ -1,111 +1,151 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TextInput, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'expo-router';
+import supabase from '../../lib/supabase';
 
-const LoginScreen = () => {
+export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { signIn } = useAuth();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // Here we'll add Firebase authentication
-    // For now, just navigate to home
-    router.push('/(app)/patient/home');
-  };
+  async function handleLogin() {
+    if (!formData.email || !formData.password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: { user }, error } = await signIn({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) throw error;
+
+      // Get user's role from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Navigate based on role
+      if (profile.role === 'patient') {
+        router.replace('/patient/home');
+      } else if (profile.role === 'caretaker') {
+        router.replace('/caretaker/dashboard');
+      }
+      
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back!</Text>
-      
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-      </View>
+      <Text style={styles.title}>Login</Text>
+      <Text style={styles.subtitle}>Welcome back!</Text>
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+      <TextInput
+        style={styles.input}
+        onChangeText={(text) => setFormData({ ...formData, email: text })}
+        value={formData.email}
+        placeholder="E-mail"
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
+
+      <TextInput
+        style={styles.input}
+        onChangeText={(text) => setFormData({ ...formData, password: text })}
+        value={formData.password}
+        placeholder="Password"
+        secureTextEntry
+      />
+
+      <TouchableOpacity 
+        style={[styles.button, loading && styles.buttonDisabled]}
+        onPress={handleLogin}
+        disabled={loading}
+      >
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={styles.forgotPassword}
-        onPress={() => router.push('/auth/forgot-password')}
-      >
-        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.linkButton}
-        onPress={() => router.back()}
-      >
-        <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
-      </TouchableOpacity>
+      <View style={styles.signupContainer}>
+        <Text style={styles.signupText}>Don't have an account? </Text>
+        <TouchableOpacity onPress={() => router.push('/auth/signup')}>
+          <Text style={styles.signupLink}>Sign Up</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     padding: 20,
-    justifyContent: 'center',
+    backgroundColor: '#fff',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 30,
-    textAlign: 'center',
+    marginBottom: 8,
+    color: '#000',
   },
-  inputContainer: {
-    marginBottom: 20,
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 30,
   },
   input: {
-    backgroundColor: '#f5f5f5',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    fontSize: 16,
+    height: 50,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    backgroundColor: '#fff',
   },
   button: {
-    backgroundColor: '#4A90E2',
-    padding: 15,
-    borderRadius: 10,
+    width: '100%',
+    height: 50,
+    backgroundColor: '#5DB0F5',
+    borderRadius: 25,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 20,
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  forgotPassword: {
-    marginTop: 15,
-    alignItems: 'center',
-  },
-  forgotPasswordText: {
-    color: '#4A90E2',
-    fontSize: 16,
-  },
-  linkButton: {
+  signupContainer: {
+    flexDirection: 'row',
     marginTop: 20,
     alignItems: 'center',
   },
-  linkText: {
-    color: '#4A90E2',
-    fontSize: 16,
+  signupText: {
+    color: '#666',
+  },
+  signupLink: {
+    color: '#5DB0F5',
+    fontWeight: 'bold',
   },
 });
-
-export default LoginScreen;
