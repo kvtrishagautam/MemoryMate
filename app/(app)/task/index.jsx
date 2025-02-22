@@ -15,25 +15,25 @@ const Task = () => {
     {
       id: 2,
       title: 'Task1',
-      description: 'Solve a simple puzzle or play a matching game.',
+      description: ' Stretch or do light exercises.',
       completed: false,
     },
     {
       id: 3,
       title: 'Task1',
-      description: 'Solve a simple puzzle or play a matching game.',
+      description: 'Have a healthy breakfast.',
       completed: false,
     },
     {
       id: 4,
       title: 'Task1',
-      description: 'Solve a simple puzzle or play a matching game.',
+      description: 'Water plants or do light gardening.',
       completed: false,
     },
     {
       id: 5,
       title: 'Task1',
-      description: 'Solve a simple puzzle or play a matching game.',
+      description: 'Help with simple household chores (folding clothes, setting the table).',
       completed: false,
     },
   ]);
@@ -83,7 +83,7 @@ const Task = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
