@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'expo-router';
 import supabase from '../../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -21,31 +20,52 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const { data: { user }, error } = await signIn({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (error) throw error;
-
-      // Get user's role from profiles table
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
+      // First try patient login
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('email', formData.email)
+        .eq('password', formData.password)
         .single();
 
-      if (profileError) throw profileError;
-
-      // Navigate based on role
-      if (profile.role === 'patient') {
-        router.replace('/patient/home');
-      } else if (profile.role === 'caretaker') {
-        router.replace('/caretaker/dashboard');
+      if (patientData) {
+        // Store user data in context
+        await AsyncStorage.setItem('userData', JSON.stringify({
+          id: patientData.id,
+          email: patientData.email,
+          role: 'patient',
+          fullName: patientData.full_name
+        }));
+        router.replace('/(app)/patient/home');
+        return;
       }
+
+      // If not found in patients, try caretaker login
+      const { data: caretakerData, error: caretakerError } = await supabase
+        .from('caretakers')
+        .select('*')
+        .eq('email', formData.email)
+        .eq('password', formData.password)
+        .single();
+
+      if (caretakerData) {
+        // Store user data in context
+        await AsyncStorage.setItem('userData', JSON.stringify({
+          id: caretakerData.id,
+          email: caretakerData.email,
+          role: 'caretaker',
+          fullName: caretakerData.full_name
+        }));
+        router.replace('/(app)/caretaker/dashboard');
+        return;
+      }
+
+      // If we get here, no user was found
+      Alert.alert('Error', 'Invalid email or password');
       
     } catch (error) {
-      Alert.alert('Error', error.message);
+      console.error('Login Error:', error);
+      Alert.alert('Error', 'Failed to login. Please try again.');
     } finally {
       setLoading(false);
     }

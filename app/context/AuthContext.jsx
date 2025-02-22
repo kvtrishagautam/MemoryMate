@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AuthContext = createContext({});
 
@@ -8,24 +8,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check current session
     checkUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
   }, []);
 
   async function checkUser() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      const userData = await AsyncStorage.getItem('userData');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
     } catch (error) {
       console.error('Error checking auth state:', error);
     } finally {
@@ -33,11 +24,18 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  async function signOut() {
+    try {
+      await AsyncStorage.removeItem('userData');
+      setUser(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  }
+
   const value = {
-    signUp: (data) => supabase.auth.signUp(data),
-    signIn: (data) => supabase.auth.signInWithPassword(data),
-    signOut: () => supabase.auth.signOut(),
     user,
+    signOut,
   };
 
   return (

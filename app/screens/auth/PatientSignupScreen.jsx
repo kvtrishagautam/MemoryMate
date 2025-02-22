@@ -30,45 +30,60 @@ export default function PatientSignupScreen() {
 
     setLoading(true);
     try {
-      const { data, error } = await signUp({
-        email: formData.email,
-        password: formData.password
-      });
+      // Check if email already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('patients')
+        .select('email')
+        .eq('email', formData.email)
+        .single();
 
-      if (error) throw error;
-
-      if (data) {
-        // Convert medical conditions string to array
-        const medicalConditions = formData.medicalConditions
-          ? formData.medicalConditions.split(',').map(condition => condition.trim())
-          : [];
-
-        const { error: profileError } = await supabase
-          .from('patients')
-          .insert([
-            {
-              id: data.user.id,
-              full_name: formData.fullName,
-              user_id: formData.userId,
-              age: parseInt(formData.age),
-              email: formData.email,
-              gender: formData.gender,
-              medical_conditions: medicalConditions,
-              emergency_contact: formData.emergencyContact,
-              emergency_contact_number: formData.emergencyContactNumber
-            },
-          ]);
-
-        if (profileError) throw profileError;
-
-        Alert.alert('Success', 'Please check your email for verification!', [
-          {
-            text: 'OK',
-            onPress: () => router.push('/auth/login'),
-          },
-        ]);
+      if (existingUser) {
+        Alert.alert('Error', 'Email already registered');
+        return;
       }
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      // Convert medical conditions string to array
+      const medicalConditions = formData.medicalConditions
+        ? formData.medicalConditions.split(',').map(condition => condition.trim())
+        : [];
+
+      // Create new patient profile
+      const { data: newPatient, error: profileError } = await supabase
+        .from('patients')
+        .insert([
+          {
+            full_name: formData.fullName,
+            user_id: formData.userId,
+            age: parseInt(formData.age),
+            email: formData.email,
+            password: formData.password, // Note: In production, this should be hashed
+            gender: formData.gender,
+            medical_conditions: medicalConditions,
+            emergency_contact: formData.emergencyContact,
+            emergency_contact_number: formData.emergencyContactNumber,
+            role: 'patient'
+          }
+        ])
+        .select()
+        .single();
+
+      if (profileError) {
+        console.error('Profile Error:', profileError);
+        throw new Error('Error creating patient profile');
+      }
+
+      Alert.alert('Success', 'Account created successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.push('/auth/login'),
+        },
+      ]);
     } catch (error) {
+      console.error('Signup Error:', error);
       Alert.alert('Error', error.message);
     } finally {
       setLoading(false);

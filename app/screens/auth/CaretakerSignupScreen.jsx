@@ -31,7 +31,23 @@ export default function CaretakerSignupScreen() {
 
     setLoading(true);
     try {
-      // First, check if the patient exists
+      // Check if email already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('caretakers')
+        .select('email')
+        .eq('email', formData.email)
+        .single();
+
+      if (existingUser) {
+        Alert.alert('Error', 'Email already registered');
+        return;
+      }
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      // Check if the patient exists
       const { data: patientData, error: patientError } = await supabase
         .from('patients')
         .select('id')
@@ -40,58 +56,58 @@ export default function CaretakerSignupScreen() {
 
       if (patientError || !patientData) {
         Alert.alert('Error', 'Patient ID not found. Please verify the Patient ID.');
-        setLoading(false);
         return;
       }
 
-      const { data, error } = await signUp({
-        email: formData.email,
-        password: formData.password
-      });
-
-      if (error) throw error;
-
-      if (data) {
-        // Create caretaker profile
-        const { error: profileError } = await supabase
-          .from('caretakers')
-          .insert([
-            {
-              id: data.user.id,
-              full_name: formData.fullName,
-              user_id: formData.userId,
-              age: parseInt(formData.age),
-              email: formData.email,
-              specialization: formData.specialization,
-              years_of_experience: parseInt(formData.yearsOfExperience),
-              certification_details: formData.certificationDetails,
-              contact_number: formData.contactNumber
-            },
-          ]);
-
-        if (profileError) throw profileError;
-
-        // Create relationship with patient
-        const { error: relationshipError } = await supabase
-          .from('patient_caretaker_relationships')
-          .insert([
-            {
-              patient_id: patientData.id,
-              caretaker_id: data.user.id,
-              status: 'pending'
-            },
-          ]);
-
-        if (relationshipError) throw relationshipError;
-
-        Alert.alert('Success', 'Please check your email for verification!', [
+      // Create new caretaker profile
+      const { data: newCaretaker, error: profileError } = await supabase
+        .from('caretakers')
+        .insert([
           {
-            text: 'OK',
-            onPress: () => router.push('/auth/login'),
-          },
-        ]);
+            full_name: formData.fullName,
+            user_id: formData.userId,
+            age: parseInt(formData.age),
+            email: formData.email,
+            password: formData.password, // Note: In production, this should be hashed
+            specialization: formData.specialization,
+            years_of_experience: parseInt(formData.yearsOfExperience),
+            certification_details: formData.certificationDetails,
+            contact_number: formData.contactNumber,
+            role: 'caretaker'
+          }
+        ])
+        .select()
+        .single();
+
+      if (profileError) {
+        console.error('Profile Error:', profileError);
+        throw new Error('Error creating caretaker profile');
       }
+
+      // Create relationship with patient
+      const { error: relationshipError } = await supabase
+        .from('patient_caretaker_relationships')
+        .insert([
+          {
+            patient_id: patientData.id,
+            caretaker_id: newCaretaker.id,
+            status: 'pending'
+          }
+        ]);
+
+      if (relationshipError) {
+        console.error('Relationship Error:', relationshipError);
+        throw new Error('Error creating patient-caretaker relationship');
+      }
+
+      Alert.alert('Success', 'Account created successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.push('/auth/login'),
+        },
+      ]);
     } catch (error) {
+      console.error('Signup Error:', error);
       Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
