@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 const MenuItem = ({ icon, label, onPress }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -10,6 +11,8 @@ const MenuItem = ({ icon, label, onPress }) => (
 );
 
 const PatientHome = () => {
+  const router = useRouter();
+  
   const userInfo = {
     name: 'Elsa',
     age: 30,
@@ -74,7 +77,10 @@ const PatientHome = () => {
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="home" size={24} color="#666" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push('/notification')}
+        >
           <Ionicons name="notifications-outline" size={24} color="#666" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>

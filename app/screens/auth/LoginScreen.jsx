@@ -1,22 +1,36 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 
 const LoginScreen = () => {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isCaretaker, setIsCaretaker] = useState(false);
 
   const handleLogin = () => {
-    // Here we'll add Firebase authentication
-    // For now, just navigate to home
-    router.push('/(app)/patient/home');
+    // Simple navigation based on role
+    if (isCaretaker) {
+      router.replace('/caretaker/home');
+    } else {
+      router.replace('/(app)/patient/home');
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome Back!</Text>
       
+      <View style={styles.roleContainer}>
+        <Text style={styles.roleText}>I am a caretaker</Text>
+        <Switch
+          value={isCaretaker}
+          onValueChange={setIsCaretaker}
+          trackColor={{ false: '#767577', true: '#4ECDC4' }}
+          thumbColor={isCaretaker ? '#fff' : '#f4f3f4'}
+        />
+      </View>
+
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -24,6 +38,7 @@ const LoginScreen = () => {
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
+          autoCapitalize="none"
         />
         
         <TextInput
@@ -69,6 +84,17 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     textAlign: 'center',
   },
+  roleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  roleText: {
+    fontSize: 16,
+    marginRight: 10,
+    color: '#333',
+  },
   inputContainer: {
     marginBottom: 20,
   },
@@ -99,7 +125,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   linkButton: {
-    marginTop: 20,
+    marginTop: 15,
     alignItems: 'center',
   },
   linkText: {
