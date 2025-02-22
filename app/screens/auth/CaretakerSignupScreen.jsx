@@ -171,14 +171,14 @@ export default function CaretakerSignupScreen() {
         style={styles.input}
         onChangeText={(text) => setFormData({ ...formData, specialization: text })}
         value={formData.specialization}
-        placeholder="Specialization"
+        placeholder="Relationship with patient"
       />
 
       <TextInput
         style={styles.input}
         onChangeText={(text) => setFormData({ ...formData, yearsOfExperience: text })}
         value={formData.yearsOfExperience}
-        placeholder="Years of Experience"
+        placeholder="Years of detection"
         keyboardType="numeric"
       />
 
@@ -186,7 +186,7 @@ export default function CaretakerSignupScreen() {
         style={[styles.input, styles.textArea]}
         onChangeText={(text) => setFormData({ ...formData, certificationDetails: text })}
         value={formData.certificationDetails}
-        placeholder="Certification Details"
+        placeholder="Disease Details"
         multiline
         numberOfLines={3}
       />
