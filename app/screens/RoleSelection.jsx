@@ -15,8 +15,8 @@ const RoleSelection = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Choose Your Role</Text>
-      <Text style={styles.subtitle}>Select how you want to use MemoryMate</Text>
+      <Text style={styles.title}>Welcome to MemoryMate</Text>
+      <Text style={styles.subtitle}>Create an Account</Text>
       
       <TouchableOpacity 
         style={[styles.roleCard, styles.patientCard]} 
@@ -28,7 +28,7 @@ const RoleSelection = () => {
         />
         <Text style={styles.roleText}>I am a Patient</Text>
         <Text style={styles.roleDescription}>
-          Create an account to get help with your daily activities
+          Sign up to get help with your daily activities
         </Text>
       </TouchableOpacity>
 
@@ -42,7 +42,7 @@ const RoleSelection = () => {
         />
         <Text style={styles.roleText}>I am a Caretaker</Text>
         <Text style={styles.roleDescription}>
-          Create an account to help manage patient activities
+          Sign up to help manage patient activities
         </Text>
       </TouchableOpacity>
 
@@ -61,27 +61,33 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#fff',
-    justifyContent: 'center',
+    paddingTop: 60,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#333',
     marginBottom: 30,
     textAlign: 'center',
   },
   roleCard: {
-    padding: 20,
+    padding: 25,
     borderRadius: 15,
-    marginVertical: 10,
+    marginVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 180,
+    height: 200,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   caretakerCard: {
     backgroundColor: '#FFE5E5',
@@ -90,29 +96,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5F1FF',
   },
   roleImage: {
-    width: 60,
-    height: 60,
-    marginBottom: 10,
+    width: 70,
+    height: 70,
+    marginBottom: 15,
   },
   roleText: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   roleDescription: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
     textAlign: 'center',
   },
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 30,
   },
   loginText: {
+    fontSize: 16,
     color: '#666',
   },
   loginLink: {
+    fontSize: 16,
     color: '#007AFF',
     fontWeight: 'bold',
   },

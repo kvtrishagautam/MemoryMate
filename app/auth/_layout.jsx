@@ -1,18 +1,19 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, usePathname } from 'expo-router';
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function AuthLayout() {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (user) {
-      // If user is authenticated, redirect to home based on role
+    // Only redirect if on login page and user is authenticated
+    if (user && pathname === '/auth/login') {
       const role = user.user_metadata?.role;
       router.replace(role === 'caretaker' ? '/(app)/caretaker/home' : '/(app)/patient/home');
     }
-  }, [user]);
+  }, [user, pathname]);
 
   return (
     <Stack
