@@ -1,85 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
 
 const PatientCard = ({ patient, onActionPress }) => {
   const actionButtons = [
-    {
-      icon: 'alarm-outline',
-      label: 'Add Reminders',
-      action: 'reminders',
-      color: '#FF6B6B' // Vibrant coral red
-    },
-    {
-      icon: 'stats-chart-outline',
-      label: 'View Status',
-      action: 'status',
-      color: '#4ECDC4' // Turquoise
-    },
-    {
-      icon: 'location-outline',
-      label: 'Track Location',
-      action: 'location',
-      color: '#45B7D1' // Sky blue
-    },
-    {
-      icon: 'list-outline',
-      label: 'Add Tasks',
-      action: 'tasks',
-      color: '#96CEB4' // Soft green
-    }
+    { icon: 'notifications', text: 'Reminders', color: '#FF6B6B', action: 'reminders' },
+    { icon: 'location', text: 'Track', color: '#4ECDC4', action: 'track' },
+    { icon: 'map', text: 'Geofence', color: '#45B7D1', action: 'geofence' },
+    { icon: 'list', text: 'Tasks', color: '#96CEB4', action: 'tasks' }
   ];
 
   return (
     <View style={styles.card}>
       <View style={styles.patientInfo}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Patient Name:</Text>
-          <Text style={styles.infoValue}>{patient.full_name}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Age:</Text>
-          <Text style={styles.infoValue}>{patient.age} years</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Caretaker:</Text>
-          <Text style={styles.infoValue}>{patient.caretaker_name}</Text>
-        </View>
+        <Text style={styles.patientLabel}>Your Care Patient</Text>
+        <Text style={styles.name}>{patient.full_name}</Text>
+        <Text style={styles.detail}>Age: {patient.age}</Text>
+        {patient.medical_conditions && (
+          <Text style={styles.detail}>Medical Conditions: {patient.medical_conditions}</Text>
+        )}
       </View>
       
-      <View style={styles.actionButtonsContainer}>
-        <View style={styles.actionButtonsRow}>
-          {actionButtons.slice(0, 2).map((button) => (
-            <TouchableOpacity
-              key={button.action}
-              style={styles.actionButton}
-              onPress={() => onActionPress(button.action, patient)}
-            >
-              <View style={[styles.iconContainer]}>
-                <Ionicons name={button.icon} size={40} color={button.color} />
-                <Text style={[styles.actionLabel, { color: button.color }]}>{button.label}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={styles.actionButtonsRow}>
-          {actionButtons.slice(2, 4).map((button) => (
-            <TouchableOpacity
-              key={button.action}
-              style={styles.actionButton}
-              onPress={() => onActionPress(button.action, patient)}
-            >
-              <View style={[styles.iconContainer]}>
-                <Ionicons name={button.icon} size={40} color={button.color} />
-                <Text style={[styles.actionLabel, { color: button.color }]}>{button.label}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+      <View style={styles.actionsContainer}>
+        {actionButtons.map((button, index) => (
+          <TouchableOpacity 
+            key={index} 
+            style={styles.actionButton}
+            onPress={() => onActionPress(button.action, patient)}
+          >
+            <View style={[styles.iconBackground, { backgroundColor: button.color }]}>
+              <Ionicons name={button.icon} size={32} color="white" />
+            </View>
+            <Text style={[styles.actionText, { color: button.color }]}>{button.text}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
@@ -90,28 +47,6 @@ const CaretakerDashboardScreen = () => {
   const [loading, setLoading] = useState(true);
   const [caretakerName, setCaretakerName] = useState('');
   const router = useRouter();
-  const { signOut } = useAuth();
-
-  const handleSignOut = () => {
-    Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Sign Out",
-          style: 'destructive',
-          onPress: async () => {
-            await signOut();
-            router.replace('/');
-          }
-        }
-      ]
-    );
-  };
 
   useEffect(() => {
     fetchPatients();
@@ -127,11 +62,13 @@ const CaretakerDashboardScreen = () => {
       }
 
       const userData = JSON.parse(userDataStr);
+      console.log('Fetching patients for caretaker:', userData);
+      setCaretakerName(userData.fullName); // Set caretaker name from userData
 
-      // First get caretaker details to get user_id
+      // First get caretaker details to get the user_id
       const { data: caretakerData, error: caretakerError } = await supabase
         .from('caretakers')
-        .select('*')
+        .select('user_id')
         .eq('id', userData.id)
         .single();
 
@@ -140,9 +77,7 @@ const CaretakerDashboardScreen = () => {
         throw caretakerError;
       }
 
-      setCaretakerName(caretakerData.full_name || 'Caretaker');
-
-      // Get patient relationships using caretaker's user_id
+      // Get patient IDs from relationships table
       const { data: relationships, error: relError } = await supabase
         .from('patient_caretaker_relationships')
         .select('patient_id')
@@ -155,16 +90,20 @@ const CaretakerDashboardScreen = () => {
       }
 
       if (!relationships || relationships.length === 0) {
+        console.log('No patient relationships found');
         setPatients([]);
-        setLoading(false);
         return;
       }
 
-      // Get patient details using the patient_ids as user_ids
+      // Get patient details from patients table
       const patientIds = relationships.map(rel => rel.patient_id);
       const { data: patientDetails, error: patientError } = await supabase
         .from('patients')
-        .select('*')
+        .select(`
+          full_name,
+          age,
+          medical_conditions
+        `)
         .in('user_id', patientIds);
 
       if (patientError) {
@@ -173,13 +112,14 @@ const CaretakerDashboardScreen = () => {
       }
 
       const validPatients = patientDetails.map(patient => ({
-        id: patient.id,
-        full_name: patient.full_name,
+        full_name: patient.full_name || 'Unknown',
         age: patient.age,
-        caretaker_name: caretakerName
-      }));
+        medical_conditions: patient.medical_conditions
+      })).filter(patient => patient.full_name !== 'Unknown');
 
+      console.log('Valid patients:', validPatients);
       setPatients(validPatients);
+
     } catch (error) {
       console.error('Error fetching patients:', error);
     } finally {
@@ -190,157 +130,150 @@ const CaretakerDashboardScreen = () => {
   const handleActionPress = (action, patient) => {
     switch (action) {
       case 'reminders':
-        router.push(`/caretaker/reminders/${patient.id}`);
+        router.push(`/(app)/caretaker/reminders/${patient.id}`);
         break;
-      case 'status':
-        router.push(`/caretaker/status/${patient.id}`);
+      case 'track':
+        router.push(`/(app)/caretaker/track/${patient.id}`);
         break;
-      case 'location':
-        router.push(`/caretaker/location/${patient.id}`);
+      case 'geofence':
+        router.push(`/(app)/caretaker/geofence/${patient.id}`);
         break;
       case 'tasks':
-        router.push(`/caretaker/tasks/${patient.id}`);
+        router.push(`/(app)/caretaker/tasks/${patient.id}`);
         break;
     }
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text>Loading patients...</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Patients</Text>
-        <TouchableOpacity 
-          style={styles.signOutButton} 
-          onPress={handleSignOut}
-        >
-          <Ionicons name="log-out-outline" size={24} color="#FF4444" />
-        </TouchableOpacity>
+        <View style={styles.welcomeContainer}>
+          <Text style={styles.welcomeText}>Welcome </Text>
+          <Text style={styles.caretakerName}>{caretakerName}</Text>
+        </View>
       </View>
 
-      <ScrollView style={styles.patientList}>
-        {loading ? (
-          <Text style={styles.messageText}>Loading patients...</Text>
-        ) : patients.length === 0 ? (
-          <Text style={styles.messageText}>No patients found</Text>
-        ) : (
-          patients.map((patient) => (
-            <PatientCard 
-              key={patient.id} 
-              patient={patient}
-              onActionPress={(action) => handleActionPress(action, patient)}
-            />
-          ))
-        )}
-      </ScrollView>
-    </View>
+      {patients.map((patient, index) => (
+        <PatientCard 
+          key={index} 
+          patient={patient}
+          onActionPress={(action) => handleActionPress(action, patient)}
+        />
+      ))}
+      
+      <View style={styles.statusContainer}>
+        <Text style={styles.statusText}>
+          Current Status: {patients.length > 0 ? 'Active Care' : 'No Patients'}
+        </Text>
+        <Text style={styles.lastUpdated}>Last updated: Just now</Text>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    padding: 16,
+    backgroundColor: '#F0F7FF',
+    paddingTop: 8,
   },
   header: {
+    marginBottom: 24,
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 20,
+    elevation: 2,
+  },
+  welcomeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
-  headerTitle: {
-    fontSize: 24,
+  welcomeText: {
+    fontSize: 20,
+    color: '#6B7280',
+  },
+  caretakerName: {
+    fontSize: 28,
     fontWeight: 'bold',
+    color: '#2D3748',
   },
-  signOutButton: {
-    padding: 8,
-  },
-  patientList: {
-    flex: 1,
-    padding: 15,
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 16,
-    flex: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
     elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   patientInfo: {
     marginBottom: 24,
+    backgroundColor: '#F7FAFC',
     padding: 16,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 10,
+    borderRadius: 12,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  infoLabel: {
+  patientLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-    width: 120,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: '#333',
-    flex: 1,
+    color: '#6B7280',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
     fontWeight: '500',
   },
-  actionButtonsContainer: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingVertical: 10,
+  name: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 12,
   },
-  actionButtonsRow: {
+  detail: {
+    fontSize: 16,
+    color: '#4A5568',
+    marginBottom: 8,
+  },
+  actionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingHorizontal: 8,
+    justifyContent: 'space-around',
+    flexWrap: 'wrap',
+    marginTop: 8,
   },
   actionButton: {
-    width: '48%',
+    alignItems: 'center',
+    width: '45%',
+    marginVertical: 12,
   },
-  iconContainer: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 20,
+  iconBackground: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
+    marginBottom: 8,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 4.65,
-    elevation: 8,
+    shadowRadius: 4,
   },
-  actionLabel: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 12,
+  actionText: {
+    fontSize: 14,
     fontWeight: '600',
-  },
-  messageText: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#666',
-    marginTop: 20,
+    marginTop: 4,
   },
   statusContainer: {
     backgroundColor: 'white',
