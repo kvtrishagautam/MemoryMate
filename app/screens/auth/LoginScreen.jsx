@@ -1,111 +1,171 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TextInput, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import supabase from '../../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const LoginScreen = () => {
+export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // Here we'll add Firebase authentication
-    // For now, just navigate to home
-    router.push('/(app)/patient/home');
-  };
+  async function handleLogin() {
+    if (!formData.email || !formData.password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // First try patient login
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('email', formData.email)
+        .eq('password', formData.password)
+        .single();
+
+      if (patientData) {
+        // Store user data in context
+        await AsyncStorage.setItem('userData', JSON.stringify({
+          id: patientData.id,
+          email: patientData.email,
+          role: 'patient',
+          fullName: patientData.full_name
+        }));
+        router.replace('/(app)/patient/home');
+        return;
+      }
+
+      // If not found in patients, try caretaker login
+      const { data: caretakerData, error: caretakerError } = await supabase
+        .from('caretakers')
+        .select('*')
+        .eq('email', formData.email)
+        .eq('password', formData.password)
+        .single();
+
+      if (caretakerData) {
+        // Store user data in context
+        await AsyncStorage.setItem('userData', JSON.stringify({
+          id: caretakerData.id,
+          email: caretakerData.email,
+          role: 'caretaker',
+          fullName: caretakerData.full_name
+        }));
+        router.replace('/(app)/caretaker/dashboard');
+        return;
+      }
+
+      // If we get here, no user was found
+      Alert.alert('Error', 'Invalid email or password');
+      
+    } catch (error) {
+      console.error('Login Error:', error);
+      Alert.alert('Error', 'Failed to login. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back!</Text>
-      
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-      </View>
+      <Text style={styles.title}>Login</Text>
+      <Text style={styles.subtitle}>Welcome back!</Text>
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+      <TextInput
+        style={styles.input}
+        onChangeText={(text) => setFormData({ ...formData, email: text })}
+        value={formData.email}
+        placeholder="E-mail"
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
+
+      <TextInput
+        style={styles.input}
+        onChangeText={(text) => setFormData({ ...formData, password: text })}
+        value={formData.password}
+        placeholder="Password"
+        secureTextEntry
+      />
+
+      <TouchableOpacity 
+        style={[styles.button, loading && styles.buttonDisabled]}
+        onPress={handleLogin}
+        disabled={loading}
+      >
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={styles.forgotPassword}
-        onPress={() => router.push('/auth/forgot-password')}
-      >
-        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity 
-        style={styles.linkButton}
-        onPress={() => router.back()}
-      >
-        <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
-      </TouchableOpacity>
+      <View style={styles.signupContainer}>
+        <Text style={styles.signupText}>Don't have an account? </Text>
+        <TouchableOpacity onPress={() => router.push('/role-selection')}>
+          <Text style={styles.signupLink}>Sign Up</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     padding: 20,
-    justifyContent: 'center',
+    backgroundColor: '#fff',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 30,
-    textAlign: 'center',
+    marginBottom: 8,
+    color: '#000',
   },
-  inputContainer: {
-    marginBottom: 20,
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 30,
   },
   input: {
-    backgroundColor: '#f5f5f5',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    fontSize: 16,
+    height: 50,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    backgroundColor: '#fff',
   },
   button: {
-    backgroundColor: '#4A90E2',
-    padding: 15,
-    borderRadius: 10,
+    width: '100%',
+    height: 50,
+    backgroundColor: '#5DB0F5',
+    borderRadius: 25,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 20,
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  forgotPassword: {
-    marginTop: 15,
-    alignItems: 'center',
-  },
-  forgotPasswordText: {
-    color: '#4A90E2',
-    fontSize: 16,
-  },
-  linkButton: {
+  signupContainer: {
+    flexDirection: 'row',
     marginTop: 20,
     alignItems: 'center',
   },
-  linkText: {
-    color: '#4A90E2',
-    fontSize: 16,
+  signupText: {
+    color: '#666',
+  },
+  signupLink: {
+    color: '#5DB0F5',
+    fontWeight: 'bold',
   },
 });
-
-export default LoginScreen;
