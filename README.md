@@ -1,49 +1,94 @@
 # MemoryMate
 
-MemoryMate is an open-source React Native app designed to support Alzheimer's patients and their caregivers. The app provides daily reminders, memory games, voice mails, and emergency contacts to enhance daily life and emotional connections.
+MemoryMate is a React Native mobile application designed to support Alzheimer's patients and their caregivers. The app facilitates daily care management, medication tracking, and communication between patients and their caregivers.
 
 ## Features
 
 ### For Patients
-- Daily Reminders: Set reminders for medications, meals, and appointments
-- Memory Games: Play games to stimulate cognitive function
-- Voice Mails: Listen to recorded messages from family members
-- Emergency Contacts: Quick access to emergency contacts
-- Photo Recognition: Identify family members and objects using AI
-- Location Tracking: Share real-time location with caregivers (optional)
-- Offline Mode: Use the app without an internet connection
+- Secure Login: Dedicated patient portal with email-based authentication
+- Medication Tracking: Keep track of medication schedules and dosages
+- Daily Activities: Monitor and record daily activities
+- Emergency Contacts: Quick access to caregiver and emergency contacts
+- User-Friendly Interface: Simple and intuitive design for ease of use
 
 ### For Caregivers
-- Caregiver Dashboard: Manage reminders, track location, and view activity logs
-- Voice Mail Recording: Record and send voice messages to the patient
-- Medication Tracker: Input and monitor medication schedules
-- Safe Zones: Set safe zones and receive alerts if the patient wanders
+- Caregiver Dashboard: Comprehensive view of assigned patients
+- Patient Management: Monitor and manage patient activities
+- Medication Management: Set and track medication schedules
+- Profile Management: Update and manage patient profiles
+- Real-time Updates: Get immediate updates on patient activities
 
 ## Tech Stack
-- Frontend: React Native (for cross-platform mobile apps)
-- Backend: Firebase (for real-time data sync and storage)
-- Database: Firestore (for cloud storage) and SQLite (for local storage)
-- AI: TensorFlow Lite (for photo recognition)
-- Audio Handling: react-native-sound or react-native-voice
-- Navigation: React Navigation
-- State Management: Redux or Context API
+- **Frontend**: React Native with Expo
+- **Backend**: Supabase (PostgreSQL database)
+- **Authentication**: Supabase Auth
+- **State Management**: React Context API
+- **Storage**: AsyncStorage for local data
+- **Navigation**: Expo Router
+
+## Prerequisites
+- Node.js (v14 or higher)
+- npm or yarn
+- Expo CLI
+- Supabase account
 
 ## Getting Started
 
-1. Install dependencies
+1. Clone the repository
+   ```bash
+   git clone https://github.com/kvtrishagautam/MemoryMate.git
+   cd MemoryMate
+   ```
+
+2. Install dependencies
    ```bash
    npm install
    ```
 
-2. Set up Firebase
-   - Create a new Firebase project
-   - Add your Firebase configuration in `app/config/firebase.js`
-   - Enable Authentication and Firestore
+3. Set up Supabase
+   - Create a new Supabase project
+   - Update Supabase configuration in `app/lib/supabase.js` with your project URL and anon key
 
-3. Start the app
+4. Start the development server
    ```bash
    npx expo start
    ```
+
+## Project Structure
+```
+MemoryMate/
+├── app/
+│   ├── screens/
+│   │   ├── auth/          # Authentication screens
+│   │   ├── patient/       # Patient-specific screens
+│   │   └── caretaker/     # Caretaker-specific screens
+│   ├── components/        # Reusable components
+│   ├── lib/              # Utilities and configurations
+│   └── context/          # React Context providers
+├── assets/               # Images, fonts, etc.
+└── package.json
+```
+
+## Database Schema
+
+### Users Table
+- id (primary key)
+- email
+- password
+- role (patient/caretaker)
+
+### Patients Table
+- id (primary key)
+- user_id (foreign key)
+- full_name
+- medical_conditions
+- age
+
+### Caretakers Table
+- id (primary key)
+- user_id (foreign key)
+- full_name
+- specialization
 
 ## Contributing
 
@@ -52,3 +97,7 @@ We welcome contributions! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For support, please email support@memorymate.com or open an issue in the GitHub repository.
