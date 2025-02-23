@@ -1,43 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../../lib/supabase';
+import { TaskService } from '../../../lib/database';
 
 const Task = () => {
   const router = useRouter();
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: 'Task1',
-      description: 'Solve a simple puzzle or play a matching game.',
-      completed: false,
-    },  
-    {
-      id: 2,
-      title: 'Task1',
-      description: 'Help with simple household chores (folding clothes, setting the table).',
-      completed: false,
-    },
-    {
-      id: 3,
-      title: 'Task1',
-      description: ' Water plants or do light gardening',
-      completed: false,
-    },
-    {
-      id: 4,
-      title: 'Task1',
-      description: ' Journal or talk about the best part of the day.',
-      completed: false,
-    },
-    {
-      id: 5,
-      title: 'Task1',
-      description: 'Read a short story or listen to an audiobook.',
-      completed: false,
-    },
-  ]);
+  const [tasks, setTasks] = useState([]);
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      const tasksData = await TaskService.getTasks();
+      setTasks(tasksData || []);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    }
+  };
 
   const toggleTask = async (taskId) => {
     try {
@@ -49,22 +31,11 @@ const Task = () => {
         t.id === taskId ? { ...t, completed: !t.completed } : t
       ));
 
-      // Update in Supabase
-      const { error } = await supabase
-        .from('tasks')
-        .update({ completed: !task.completed })
-        .eq('id', taskId);
-
-      if (error) {
-        console.error('Error updating task:', error);
-        // Revert local state if update fails
-        setTasks(tasks.map(t => 
-          t.id === taskId ? { ...t, completed: task.completed } : t
-        ));
-      }
+      // Update in database
+      await TaskService.updateTaskCompletion(taskId, !task.completed);
     } catch (error) {
-      console.error('Error:', error);
-      // Revert local state if update fails
+      console.error('Error toggling task:', error);
+      // Revert local state if database update fails
       setTasks(tasks.map(t => 
         t.id === taskId ? { ...t, completed: task.completed } : t
       ));
@@ -75,31 +46,36 @@ const Task = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="black" />
+          <Ionicons name="arrow-back" size={24} color="#666" />
         </TouchableOpacity>
-        <Text style={styles.headerText}>Tasks</Text>
+        <Text style={styles.headerTitle}>Daily Tasks</Text>
+        <View style={{ width: 24 }} /> {/* Empty view for header alignment */}
       </View>
-      <ScrollView style={styles.scrollView}>
-        {tasks.map((task) => (
-          <TouchableOpacity 
+
+      <ScrollView style={styles.taskList}>
+        {tasks.map(task => (
+          <TouchableOpacity
             key={task.id}
+            style={[styles.taskItem, task.completed && styles.taskItemCompleted]}
             onPress={() => toggleTask(task.id)}
-            style={styles.taskItem}
           >
-            <View style={[styles.checkboxContainer, task.completed && styles.checkedContainer]}>
-              {task.completed && <Ionicons name="checkmark" size={18} color="white" />}
+            <View style={styles.taskCheckbox}>
+              {task.completed && <Ionicons name="checkmark" size={20} color="#4CAF50" />}
             </View>
-            <Text style={[styles.taskText, task.completed && styles.completedText]}>
-              {task.description}
-            </Text>
+            <View style={styles.taskContent}>
+              <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
+                {task.title}
+              </Text>
+              <Text style={[styles.taskDescription, task.completed && styles.taskDescriptionCompleted]}>
+                {task.description}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
     </SafeAreaView>
   );
 };
-
-export default Task;
 
 const styles = StyleSheet.create({
   container: {
@@ -108,45 +84,63 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  headerText: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginLeft: 16,
+    color: '#333',
   },
-  scrollView: {
+  taskList: {
     flex: 1,
+    padding: 16,
   },
   taskItem: {
     flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginBottom: 12,
+    alignItems: 'center',
   },
-  checkboxContainer: {
+  taskItemCompleted: {
+    backgroundColor: '#e8f5e9',
+  },
+  taskCheckbox: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#000',
-    marginRight: 16,
+    borderColor: '#4CAF50',
+    marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkedContainer: {
-    backgroundColor: '#000',
-  },
-  taskText: {
-    fontSize: 16,
+  taskContent: {
     flex: 1,
   },
-  completedText: {
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  taskTitleCompleted: {
+    color: '#4CAF50',
     textDecorationLine: 'line-through',
-    color: '#888',
+  },
+  taskDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  taskDescriptionCompleted: {
+    color: '#81c784',
+    textDecorationLine: 'line-through',
   },
 });
+
+export default Task;
