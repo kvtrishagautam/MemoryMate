@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,6 +10,7 @@ export default function PatientDashboardScreen() {
   const router = useRouter();
   const [userData, setUserData] = useState(null);
   const [caretakers, setCaretakers] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
 
   useEffect(() => {
     loadUserData();
@@ -18,6 +19,7 @@ export default function PatientDashboardScreen() {
   useEffect(() => {
     if (userData?.id) {
       fetchCaretakers();
+      fetchPendingRequests();
     }
   }, [userData]);
 
@@ -39,6 +41,8 @@ export default function PatientDashboardScreen() {
       const { data: relationships, error } = await supabase
         .from('patient_caretaker_relationships')
         .select(`
+          caretaker_id,
+          status,
           caretaker:caretakers (
             id,
             full_name,
@@ -46,7 +50,7 @@ export default function PatientDashboardScreen() {
             contact_number
           )
         `)
-        .eq('patient_id', userData.id)
+        .eq('patient_id', parseInt(userData.id))
         .eq('status', 'accepted');
 
       if (error) throw error;
@@ -59,6 +63,59 @@ export default function PatientDashboardScreen() {
       }
     } catch (error) {
       console.error('Error fetching caretakers:', error);
+    }
+  }
+
+  async function fetchPendingRequests() {
+    if (!userData?.id) return;
+
+    try {
+      const { data: requests, error } = await supabase
+        .from('patient_caretaker_relationships')
+        .select(`
+          id,
+          status,
+          caretaker_id,
+          caretaker:caretakers (
+            id,
+            full_name,
+            specialization,
+            contact_number
+          )
+        `)
+        .eq('patient_id', parseInt(userData.id))
+        .eq('status', 'pending');
+
+      if (error) throw error;
+
+      if (requests) {
+        setPendingRequests(requests);
+      }
+    } catch (error) {
+      console.error('Error fetching pending requests:', error);
+    }
+  }
+
+  async function handleRequest(relationshipId, status) {
+    try {
+      const { error } = await supabase
+        .from('patient_caretaker_relationships')
+        .update({ status })
+        .eq('id', relationshipId);
+
+      if (error) throw error;
+
+      Alert.alert(
+        'Success',
+        `Caretaker request ${status === 'accepted' ? 'accepted' : 'rejected'}`
+      );
+
+      // Refresh the lists
+      fetchCaretakers();
+      fetchPendingRequests();
+    } catch (error) {
+      console.error('Error handling request:', error);
+      Alert.alert('Error', 'Failed to process request');
     }
   }
 
@@ -96,6 +153,37 @@ export default function PatientDashboardScreen() {
           <Text style={styles.actionButtonText}>Emergency Contact</Text>
         </TouchableOpacity>
       </View>
+
+      {pendingRequests.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Pending Caretaker Requests</Text>
+          {pendingRequests.map((request) => (
+            <View key={request.id} style={styles.requestCard}>
+              <Text style={styles.caretakerName}>{request.caretaker.full_name}</Text>
+              <Text style={styles.caretakerDetails}>
+                {request.caretaker.specialization}
+              </Text>
+              <Text style={styles.caretakerContact}>
+                {request.caretaker.contact_number}
+              </Text>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={[styles.button, styles.acceptButton]}
+                  onPress={() => handleRequest(request.id, 'accepted')}
+                >
+                  <Text style={styles.buttonText}>Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.rejectButton]}
+                  onPress={() => handleRequest(request.id, 'rejected')}
+                >
+                  <Text style={styles.buttonText}>Reject</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Caretakers Section */}
       <View style={styles.section}>
@@ -179,6 +267,14 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     color: '#333',
   },
+  requestCard: {
+    backgroundColor: '#f8f8f8',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
   caretakerCard: {
     backgroundColor: '#f8f8f8',
     padding: 15,
@@ -201,6 +297,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#4CAF50',
     marginTop: 5,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  button: {
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  acceptButton: {
+    backgroundColor: '#4CAF50',
+  },
+  rejectButton: {
+    backgroundColor: '#f44336',
+  },
+  buttonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
   noDataText: {
     fontSize: 16,

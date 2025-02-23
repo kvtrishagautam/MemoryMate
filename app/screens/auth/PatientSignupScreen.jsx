@@ -56,11 +56,11 @@ export default function PatientSignupScreen() {
         .from('patients')
         .insert([
           {
+            user_id: parseInt(formData.userId),
             full_name: formData.fullName,
-            user_id: formData.userId,
             age: parseInt(formData.age),
             email: formData.email,
-            password: formData.password, // Note: In production, this should be hashed
+            password: formData.password,
             gender: formData.gender,
             medical_conditions: medicalConditions,
             emergency_contact: formData.emergencyContact,
@@ -107,6 +107,7 @@ export default function PatientSignupScreen() {
         onChangeText={(text) => setFormData({ ...formData, userId: text })}
         value={formData.userId}
         placeholder="User ID (for caretaker connection)"
+        keyboardType="numeric"
       />
 
       <View style={styles.row}>

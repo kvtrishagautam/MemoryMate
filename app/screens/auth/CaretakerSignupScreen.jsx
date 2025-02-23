@@ -50,8 +50,8 @@ export default function CaretakerSignupScreen() {
       // Check if the patient exists
       const { data: patientData, error: patientError } = await supabase
         .from('patients')
-        .select('id')
-        .eq('user_id', formData.patientUserId)
+        .select('user_id')
+        .eq('user_id', parseInt(formData.patientUserId))
         .single();
 
       if (patientError || !patientData) {
@@ -64,14 +64,14 @@ export default function CaretakerSignupScreen() {
         .from('caretakers')
         .insert([
           {
+            user_id: parseInt(formData.userId),
             full_name: formData.fullName,
-            user_id: formData.userId,
             age: parseInt(formData.age),
             email: formData.email,
-            password: formData.password, // Note: In production, this should be hashed
+            password: formData.password,
             specialization: formData.specialization,
             years_of_experience: parseInt(formData.yearsOfExperience),
-            certification_details: formData.certificationDetails,
+            certification_details: formData.certificationDetails || null,
             contact_number: formData.contactNumber,
             role: 'caretaker'
           }
@@ -89,8 +89,8 @@ export default function CaretakerSignupScreen() {
         .from('patient_caretaker_relationships')
         .insert([
           {
-            patient_id: patientData.id,
-            caretaker_id: newCaretaker.id,
+            patient_id: parseInt(formData.patientUserId),
+            caretaker_id: parseInt(formData.userId),
             status: 'pending'
           }
         ]);

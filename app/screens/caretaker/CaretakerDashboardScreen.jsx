@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -19,10 +20,18 @@ const CaretakerDashboardScreen = () => {
   const [loading, setLoading] = useState(true);
   const [caretakerDetails, setCaretakerDetails] = useState(null);
   const [patients, setPatients] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
 
   useEffect(() => {
     loadCaretakerData();
   }, []);
+
+  useEffect(() => {
+    if (caretakerDetails?.id) {
+      fetchPatients();
+      fetchPendingRequests();
+    }
+  }, [caretakerDetails]);
 
   const loadCaretakerData = async () => {
     try {
@@ -48,38 +57,71 @@ const CaretakerDashboardScreen = () => {
 
       if (caretakerError) throw caretakerError;
       setCaretakerDetails(caretakerData);
-
-      // Get assigned patients
-      const { data: patientRelations, error: patientsError } = await supabase
-        .from('patient_caretaker_relationships')
-        .select(`
-          patient:patients (
-            id,
-            full_name,
-            age,
-            gender,
-            medical_conditions,
-            emergency_contact,
-            emergency_contact_number
-          )
-        `)
-        .eq('caretaker_id', userData.id)
-        .eq('status', 'accepted');
-
-      if (patientsError) throw patientsError;
-      
-      const patientList = patientRelations
-        .map(rel => rel.patient)
-        .filter(patient => patient !== null);
-      
-      setPatients(patientList);
     } catch (error) {
       console.error('Error loading caretaker data:', error);
       Alert.alert('Error', 'Failed to load dashboard data');
+    }
+  };
+
+  async function fetchPatients() {
+    if (!caretakerDetails?.id) return;
+    
+    try {
+      const { data: relationships, error } = await supabase
+        .from('patient_caretaker_relationships')
+        .select(`
+          patient:patients (
+            user_id,
+            full_name,
+            emergency_contact_number,
+            medical_conditions
+          )
+        `)
+        .eq('caretaker_id', parseInt(caretakerDetails.id))
+        .eq('status', 'accepted');
+
+      if (error) throw error;
+
+      if (relationships) {
+        const validPatients = relationships
+          .map(rel => rel.patient)
+          .filter(patient => patient !== null);
+        setPatients(validPatients);
+      }
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+    }
+  }
+
+  async function fetchPendingRequests() {
+    if (!caretakerDetails?.id) return;
+
+    try {
+      const { data: requests, error } = await supabase
+        .from('patient_caretaker_relationships')
+        .select(`
+          id,
+          patient:patients (
+            user_id,
+            full_name,
+            emergency_contact_number
+          ),
+          status
+        `)
+        .eq('caretaker_id', parseInt(caretakerDetails.id))
+        .in('status', ['pending', 'rejected']);
+
+      if (error) throw error;
+
+      if (requests) {
+        setPendingRequests(requests);
+      }
+    } catch (error) {
+      console.error('Error fetching pending requests:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handlePatientPress = (patient) => {
     // Navigate to patient details (to be implemented)
@@ -120,7 +162,7 @@ const CaretakerDashboardScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.welcomeText}>Welcome back,</Text>
@@ -141,19 +183,36 @@ const CaretakerDashboardScreen = () => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Patients</Text>
-        {patients.length > 0 ? (
-          <FlatList
-            data={patients}
-            renderItem={renderPatientCard}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.patientList}
-          />
-        ) : (
-          <Text style={styles.noDataText}>No patients assigned yet</Text>
-        )}
+        <Text style={styles.sectionTitle}>Connection Requests</Text>
+        {pendingRequests.map((request) => (
+          <View key={request.id} style={styles.requestCard}>
+            <Text style={styles.patientName}>{request.patient.full_name}</Text>
+            <Text>Contact: {request.patient.emergency_contact_number}</Text>
+            <Text style={[
+              styles.statusText,
+              request.status === 'pending' ? styles.pendingStatus : styles.rejectedStatus
+            ]}>
+              Status: {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+            </Text>
+          </View>
+        ))}
       </View>
-    </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Your Patients</Text>
+        {patients.map((patient) => (
+          <View key={patient.user_id} style={styles.patientCard}>
+            <Text style={styles.patientName}>{patient.full_name}</Text>
+            <Text>Contact: {patient.emergency_contact_number}</Text>
+            {patient.medical_conditions && patient.medical_conditions.length > 0 && (
+              <Text style={styles.medicalHistory}>
+                Medical Conditions: {patient.medical_conditions.join(', ')}
+              </Text>
+            )}
+          </View>
+        ))}
+      </View>
+    </ScrollView>
   );
 };
 
@@ -252,6 +311,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  requestCard: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    elevation: 2,
+  },
+  statusText: {
+    marginTop: 5,
+    fontWeight: 'bold',
+  },
+  pendingStatus: {
+    color: '#FFA000',
+  },
+  rejectedStatus: {
+    color: '#f44336',
+  },
+  medicalHistory: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
     fontStyle: 'italic',
   },
 });
