@@ -1,17 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Image, Modal, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SettingsScreen = () => {
   const router = useRouter();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [imageError, setImageError] = useState(false);
-  
-  const userInfo = {
-    name: 'Angga Risky',
-    email: 'angga@example.com',
+  const [userInfo, setUserInfo] = useState({
+    name: 'Loading...',
+    email: '',
     profileImage: 'https://placekitten.com/200/200'
+  });
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const userDataStr = await AsyncStorage.getItem('userData');
+      if (!userDataStr) {
+        console.error('No user data found');
+        return;
+      }
+
+      const userData = JSON.parse(userDataStr);
+
+      // Fetch patient data if user is a patient
+      if (userData.role === 'patient') {
+        const { data: patient, error: patientError } = await supabase
+          .from('patients')
+          .select('*')
+          .eq('email', userData.email)
+          .single();
+
+        if (patientError) {
+          console.error('Error fetching patient:', patientError);
+          return;
+        }
+
+        setUserInfo({
+          name: patient.full_name || 'Patient',
+          email: patient.email,
+          profileImage: patient.profile_image || userInfo.profileImage
+        });
+      } 
+      // Fetch caretaker data if user is a caretaker
+      else if (userData.role === 'caretaker') {
+        const { data: caretaker, error: caretakerError } = await supabase
+          .from('caretakers')
+          .select('*')
+          .eq('email', userData.email)
+          .single();
+
+        if (caretakerError) {
+          console.error('Error fetching caretaker:', caretakerError);
+          return;
+        }
+
+        setUserInfo({
+          name: caretaker.full_name || 'Caretaker',
+          email: caretaker.email,
+          profileImage: caretaker.profile_image || userInfo.profileImage
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
   };
 
   const defaultAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userInfo.name) + '&background=007AFF&color=fff';
@@ -20,9 +78,17 @@ const SettingsScreen = () => {
     router.replace('/screens/PatientHome');
   };
 
-  const handleLogoutConfirm = () => {
-    setShowLogoutModal(false);
-    router.replace('/auth/login');
+  const handleLogoutConfirm = async () => {
+    try {
+      await AsyncStorage.removeItem('userData');
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      setShowLogoutModal(false);
+      router.replace('/auth/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const handleLogout = () => {
@@ -149,23 +215,20 @@ const SettingsScreen = () => {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Ionicons name="log-out-outline" size={32} color="#FF3B30" />
-                <Text style={styles.modalTitle}>Logout</Text>
-              </View>
-              <Text style={styles.modalMessage}>Are you sure you want to logout?</Text>
+              <Text style={styles.modalTitle}>Logout</Text>
+              <Text style={styles.modalText}>Are you sure you want to logout?</Text>
               <View style={styles.modalButtons}>
-                <TouchableOpacity 
-                  style={[styles.modalButton, styles.cancelButton]} 
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
                   onPress={handleCancelLogout}
                 >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                  <Text style={[styles.modalButtonText, styles.cancelButtonText]}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.modalButton, styles.confirmButton]}
                   onPress={handleLogoutConfirm}
                 >
-                  <Text style={styles.confirmButtonText}>Logout</Text>
+                  <Text style={[styles.modalButtonText, styles.confirmButtonText]}>Logout</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -183,23 +246,22 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
+    paddingTop: Platform.OS === 'android' ? 16 : 0,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
   },
   backButton: {
-    width: 80,
     flexDirection: 'row',
     alignItems: 'center',
   },
   backText: {
-    fontSize: 16,
     color: '#007AFF',
-    marginLeft: 8,
+    fontSize: 17,
+    marginLeft: 4,
   },
   headerTitle: {
     fontSize: 17,
@@ -207,56 +269,40 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   headerRight: {
-    width: 40,
+    width: 70,
   },
   container: {
     flex: 1,
     backgroundColor: '#fff',
   },
   profileSection: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
     padding: 16,
-    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
-    paddingBottom: 30,
-    width: '100%',
   },
   profileImage: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    borderColor: '#E5E5EA',
-    borderWidth: 1,
-    marginBottom: 12,
   },
   profileInfo: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    paddingHorizontal: 16,
+    marginLeft: 16,
   },
   profileName: {
     fontSize: 20,
-    fontWeight: Platform.OS === 'ios' ? '600' : '700',
+    fontWeight: '600',
     color: '#000',
     marginBottom: 4,
-    textAlign: 'center',
   },
   profileEmail: {
     fontSize: 14,
     color: '#666',
-    textAlign: 'center',
   },
   optionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
   },
@@ -267,30 +313,25 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 30,
     alignItems: 'center',
+    marginRight: 12,
   },
   optionText: {
-    fontSize: 16,
-    marginLeft: 12,
+    fontSize: 17,
     color: '#000',
   },
   logoutButton: {
-    marginTop: 40,
+    marginTop: 16,
   },
   logoutText: {
     color: '#FF3B30',
   },
   copyrightContainer: {
-    position: 'absolute',
-    bottom: 16,
-    left: 0,
-    right: 0,
+    padding: 16,
     alignItems: 'center',
-    paddingVertical: 8,
   },
   copyrightText: {
     fontSize: 12,
-    color: '#8E8E93',
-    textAlign: 'center',
+    color: '#666',
   },
   modalOverlay: {
     flex: 1,
@@ -303,32 +344,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 20,
     width: '80%',
-    maxWidth: 340,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#000',
-    marginTop: 8,
+    marginBottom: 8,
   },
-  modalMessage: {
-    fontSize: 16,
+  modalText: {
+    fontSize: 13,
     color: '#666',
+    marginBottom: 20,
     textAlign: 'center',
-    marginBottom: 24,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -338,26 +365,24 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 8,
     marginHorizontal: 8,
   },
+  modalButtonText: {
+    fontSize: 17,
+    textAlign: 'center',
+  },
   cancelButton: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#E5E5EA',
   },
   confirmButton: {
     backgroundColor: '#FF3B30',
   },
   cancelButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
+    color: '#000',
   },
   confirmButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
   },
 });
 

@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { supabase } from '../../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MenuItem = ({ icon, label, onPress }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -12,11 +14,59 @@ const MenuItem = ({ icon, label, onPress }) => (
 
 const PatientHome = () => {
   const router = useRouter();
-  const userInfo = {
-    name: 'Elsa',
-    age: 30,
-    caretakerName: 'Liam',
-    username: 'Elsa003'
+  const [userInfo, setUserInfo] = useState({
+    name: 'Loading...',
+    age: '',
+    caretakerName: '',
+    username: ''
+  });
+
+  useEffect(() => {
+    loadPatientData();
+  }, []);
+
+  const loadPatientData = async () => {
+    try {
+      const userDataStr = await AsyncStorage.getItem('userData');
+      if (!userDataStr) {
+        console.error('No user data found');
+        return;
+      }
+
+      const userData = JSON.parse(userDataStr);
+
+      const { data: patient, error: patientError } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('email', userData.email)
+        .single();
+
+      if (patientError) {
+        console.error('Error fetching patient:', patientError);
+        return;
+      }
+
+      const { data: relationships, error: caretakerError } = await supabase
+        .from('patient_caretaker_relationships')
+        .select(`
+          caretaker:caretakers (
+            full_name
+          )
+        `)
+        .eq('patient_id', patient.id)
+        .eq('status', 'accepted')
+        .single();
+
+      setUserInfo({
+        name: patient.full_name || 'Patient',
+        age: patient.age || '',
+        caretakerName: relationships?.caretaker?.full_name || 'Not assigned',
+        username: patient.email?.split('@')[0] || ''
+      });
+
+    } catch (error) {
+      console.error('Error loading patient data:', error);
+    }
   };
 
   return (
