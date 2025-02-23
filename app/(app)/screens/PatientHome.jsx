@@ -17,8 +17,8 @@ const PatientHome = () => {
   const [userInfo, setUserInfo] = useState({
     name: 'Loading...',
     age: '',
-    caretakerName: '',
-    username: ''
+    emergencyName: '',
+    emergencyContact: ''
   });
 
   useEffect(() => {
@@ -46,22 +46,11 @@ const PatientHome = () => {
         return;
       }
 
-      const { data: relationships, error: caretakerError } = await supabase
-        .from('patient_caretaker_relationships')
-        .select(`
-          caretaker:caretakers (
-            full_name
-          )
-        `)
-        .eq('patient_id', patient.id)
-        .eq('status', 'accepted')
-        .single();
-
       setUserInfo({
         name: patient.full_name || 'Patient',
         age: patient.age || '',
-        caretakerName: relationships?.caretaker?.full_name || 'Not assigned',
-        username: patient.email?.split('@')[0] || ''
+        emergencyName: patient.emergency_contact || 'Not provided',
+        emergencyContact: patient.emergency_contact_number || 'Not available'
       });
 
     } catch (error) {
@@ -87,8 +76,8 @@ const PatientHome = () => {
           <View style={styles.profileInfo}>
             <Text style={styles.greeting}>Hi, {userInfo.name}</Text>
             <Text style={styles.profileDetails}>Age: {userInfo.age}</Text>
-            <Text style={styles.profileDetails}>Caretaker's Name: {userInfo.caretakerName}</Text>
-            <Text style={styles.profileDetails}>Username: {userInfo.username}</Text>
+            <Text style={styles.profileDetails}>Emergency Contact Name: {userInfo.emergencyName}</Text>
+            <Text style={styles.profileDetails}>Emergency Contact Number: {userInfo.emergencyContact}</Text>
           </View>
         </View>
 
