@@ -87,7 +87,10 @@ const PatientHome = () => {
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="notifications-outline" size={24} color="#666" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => router.push('/location')}
+        >
           <Ionicons name="location-outline" size={24} color="#666" />
         </TouchableOpacity>
       </View>
