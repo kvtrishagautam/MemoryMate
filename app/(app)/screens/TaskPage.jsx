@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { TaskService } from '../../../lib/database';
 
-const Task = () => {
+const TaskPage = () => {
   const router = useRouter();
   const [tasks, setTasks] = useState([]);
 
@@ -26,47 +26,19 @@ const Task = () => {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
 
-      // Update local state immediately for better UX
       setTasks(tasks.map(t => 
         t.id === taskId ? { ...t, completed: !t.completed } : t
       ));
 
-      // Update in database
       await TaskService.updateTaskCompletion(taskId, !task.completed);
     } catch (error) {
       console.error('Error toggling task:', error);
-      // Revert local state if database update fails
+      // Revert on error
       setTasks(tasks.map(t => 
         t.id === taskId ? { ...t, completed: task.completed } : t
       ));
     }
   };
-
-  const renderTask = (task) => (
-    <TouchableOpacity
-      key={task.id}
-      style={[styles.taskItem, task.completed && styles.taskItemCompleted]}
-      onPress={() => toggleTask(task.id)}
-    >
-      <View style={styles.taskCheckbox}>
-        {task.completed && (
-          <View style={styles.checkmarkContainer}>
-            <Ionicons name="checkmark" size={20} color="#4CAF50" />
-          </View>
-        )}
-      </View>
-      <View style={styles.taskContent}>
-        <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
-          {task.title || 'Untitled Task'}
-        </Text>
-        {task.description ? (
-          <Text style={[styles.taskDescription, task.completed && styles.taskDescriptionCompleted]}>
-            {task.description}
-          </Text>
-        ) : null}
-      </View>
-    </TouchableOpacity>
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -75,12 +47,34 @@ const Task = () => {
           <Ionicons name="arrow-back" size={24} color="#666" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Daily Tasks</Text>
-        <View style={{ width: 24 }} /> {/* Empty view for header alignment */}
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView style={styles.taskList}>
         {tasks.length > 0 ? (
-          tasks.map(renderTask)
+          tasks.map(task => (
+            <TouchableOpacity
+              key={task.id}
+              style={[styles.taskItem, task.completed && styles.taskItemCompleted]}
+              onPress={() => toggleTask(task.id)}
+            >
+              <View style={styles.taskCheckbox}>
+                {task.completed && (
+                  <Ionicons name="checkmark" size={20} color="#4CAF50" />
+                )}
+              </View>
+              <View style={styles.taskContent}>
+                <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
+                  {task.title || 'Untitled Task'}
+                </Text>
+                {task.description && (
+                  <Text style={[styles.taskDescription, task.completed && styles.taskDescriptionCompleted]}>
+                    {task.description}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))
         ) : (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No tasks available</Text>
@@ -139,10 +133,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  checkmarkContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   taskContent: {
     flex: 1,
   },
@@ -177,4 +167,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Task;
+export default TaskPage;

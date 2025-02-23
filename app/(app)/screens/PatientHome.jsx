@@ -1,14 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-
-
-
 const MenuItem = ({ icon, label, onPress }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-    <Image source={icon} style={styles.menuIcon} />
+    <Image source={icon} style={styles.menuIcon} resizeMode="contain" />
     <Text style={styles.menuLabel}>{label}</Text>
   </TouchableOpacity>
 );
@@ -17,7 +14,7 @@ const PatientHome = () => {
   const router = useRouter();
   
   const navigateToTask = () => {
-    router.push('/task');
+    router.push('/(app)/screens/TaskPage');
   };
 
   const userInfo = {
@@ -28,89 +25,111 @@ const PatientHome = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity>
-          <Ionicons name="menu" size={24} color="#666" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>MemoryMate</Text>
-        <TouchableOpacity>
-          <Ionicons name="settings-outline" size={24} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.profileCard}>
-        <Image
-          source={{ uri: 'https://placekitten.com/100/100' }}
-          style={styles.profileImage}
-        />
-        <View style={styles.profileInfo}>
-          <Text style={styles.greeting}>Hi, {userInfo.name}</Text>
-          <Text style={styles.profileDetails}>Age: {userInfo.age}</Text>
-          <Text style={styles.profileDetails}>Caretaker's Name: {userInfo.caretakerName}</Text>
-          <Text style={styles.profileDetails}>Username: {userInfo.username}</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity>
+            <Ionicons name="menu" size={24} color="#666" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>MemoryMate</Text>
+          <TouchableOpacity>
+            <Ionicons name="settings-outline" size={24} color="#666" />
+          </TouchableOpacity>
         </View>
-      </View>
 
-      <TouchableOpacity style={styles.emergencyButton}>
-        <Ionicons name="call" size={24} color="white" />
-        <Text style={styles.emergencyText}>Emergency</Text>
-      </TouchableOpacity>
-
-      <View style={styles.menuGrid}>
-        <MenuItem
-          icon={require('../../../assets/images/tasks.png')}
-          label="Daily tasks"
-          onPress={navigateToTask}
-        />
-        <MenuItem
-          icon={require('../../../assets/images/tasks.png')}
-          label="Activities"
-          onPress={() => {}}
-        />
-        <MenuItem
-          icon={require('../../../assets/images/tasks.png')}
-          label="Games"
-          onPress={() => {}}
-        />
-        <MenuItem
-          icon={require('../../../assets/images/tasks.png')}
-          label="Family Tree"
-          onPress={() => {}}
-        />
-      </View>
-
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="home" size={24} color="#666" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="notifications-outline" size={24} color="#666" />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => router.push('/location')}
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <Ionicons name="location-outline" size={24} color="#666" />
-        </TouchableOpacity>
+          <View style={styles.profileCard}>
+            <Image
+              source={{ uri: 'https://placekitten.com/100/100' }}
+              style={styles.profileImage}
+            />
+            <View style={styles.profileInfo}>
+              <Text style={styles.greeting}>Hi, {userInfo.name}</Text>
+              <Text style={styles.profileDetails}>Age: {userInfo.age}</Text>
+              <Text style={styles.profileDetails}>Caretaker's Name: {userInfo.caretakerName}</Text>
+              <Text style={styles.profileDetails}>Username: {userInfo.username}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.emergencyButton}>
+            <Ionicons name="call" size={24} color="white" />
+            <Text style={styles.emergencyText}>Emergency</Text>
+          </TouchableOpacity>
+
+          <View style={styles.menuGrid}>
+            <MenuItem
+              icon={require('../../../assets/images/tasks.png')}
+              label="Daily tasks"
+              onPress={navigateToTask}
+            />
+            <MenuItem
+              icon={require('../../../assets/images/tasks.png')}
+              label="Activities"
+              onPress={() => {}}
+            />
+            <MenuItem
+              icon={require('../../../assets/images/tasks.png')}
+              label="Games"
+              onPress={() => router.push('/screens/GamePage')}
+            />
+            <MenuItem
+              icon={require('../../../assets/images/tasks.png')}
+              label="Family Tree"
+              onPress={() => {}}
+            />
+          </View>
+        </ScrollView>
+
+        <View style={styles.navbar}>
+          <TouchableOpacity style={styles.navItem}>
+            <Ionicons name="home" size={24} color="#666" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navItem}>
+            <Ionicons name="notifications-outline" size={24} color="#666" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => router.push('/(app)/location')}
+          >
+            <Ionicons name="location-outline" size={24} color="#666" />
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 80, // Space for bottom navigation
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   headerTitle: {
     fontSize: 20,
+    fontWeight: 'bold',
     color: '#666',
   },
   profileCard: {
@@ -119,6 +138,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     flexDirection: 'row',
+    alignItems: 'center',
   },
   profileImage: {
     width: 60,
@@ -127,6 +147,7 @@ const styles = StyleSheet.create({
   },
   profileInfo: {
     marginLeft: 16,
+    flex: 1,
   },
   greeting: {
     fontSize: 24,
@@ -136,10 +157,12 @@ const styles = StyleSheet.create({
   profileDetails: {
     color: '#666',
     fontSize: 14,
+    marginBottom: 2,
   },
   emergencyButton: {
     backgroundColor: '#FF6B6B',
     margin: 16,
+    marginBottom: 24,
     padding: 16,
     borderRadius: 12,
     flexDirection: 'row',
@@ -156,11 +179,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     padding: 8,
+    justifyContent: 'space-between',
   },
   menuItem: {
-    width: '50%',
-    padding: 8,
+    width: '45%',
+    aspectRatio: 1,
+    backgroundColor: '#F7F6EE',
+    borderRadius: 15,
+    padding: 16,
+    margin: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   menuIcon: {
     width: 40,
@@ -170,16 +207,24 @@ const styles = StyleSheet.create({
   menuLabel: {
     fontSize: 16,
     color: '#333',
+    textAlign: 'center',
   },
-  bottomNav: {
+  navbar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 2,
     borderTopWidth: 1,
     borderTopColor: '#eee',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
   },
   navItem: {
-    padding: 8,
+    padding: 12,
   },
 });
 
