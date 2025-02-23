@@ -1,24 +1,28 @@
 import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Get current user data from AsyncStorage
+const getCurrentUserData = async () => {
+    try {
+        const userData = await AsyncStorage.getItem('userData');
+        return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+        console.error('Error getting user data:', error);
+        return null;
+    }
+};
 
 // Check if user is authenticated
 export const isAuthenticated = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    return !!user;
+    const userData = await getCurrentUserData();
+    return !!userData;
 };
 
 // Get current user's role
 export const getCurrentUserRole = async () => {
     try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return null;
-
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-        return profile?.role || null;
+        const userData = await getCurrentUserData();
+        return userData?.role || null;
     } catch (error) {
         console.error('Error getting user role:', error);
         return null;
@@ -40,17 +44,19 @@ export const isPatient = async () => {
 // Check if caretaker has permission for specific patient
 export const hasCaretakerPermission = async (patientId) => {
     try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return false;
+        const userData = await getCurrentUserData();
+        if (!userData || userData.role !== 'caretaker') return false;
 
-        const { data: caretaker } = await supabase
-            .from('caretaker_details')
-            .select('assigned_patient_id')
-            .eq('id', user.id)
-            .eq('assigned_patient_id', patientId)
+        const { data: relationship, error } = await supabase
+            .from('patient_caretaker_relationships')
+            .select('status')
+            .eq('caretaker_id', userData.id)
+            .eq('patient_id', patientId)
+            .eq('status', 'accepted')
             .single();
 
-        return !!caretaker;
+        if (error || !relationship) return false;
+        return true;
     } catch (error) {
         console.error('Error checking caretaker permission:', error);
         return false;
@@ -60,30 +66,22 @@ export const hasCaretakerPermission = async (patientId) => {
 // Check if user is the patient themselves
 export const isOwnPatient = async (patientId) => {
     try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return false;
-
-        const { data: patient } = await supabase
-            .from('patient_details')
-            .select('patient_id')
-            .eq('id', user.id)
-            .eq('patient_id', patientId)
-            .single();
-
-        return !!patient;
+        const userData = await getCurrentUserData();
+        if (!userData || userData.role !== 'patient') return false;
+        return userData.id === patientId;
     } catch (error) {
-        console.error('Error checking patient ownership:', error);
+        console.error('Error checking own patient:', error);
         return false;
     }
 };
 
 // Check if user has any access to patient data (either as caretaker or patient)
 export const hasPatientAccess = async (patientId) => {
-    const isOwn = await isOwnPatient(patientId);
-    if (isOwn) return true;
-
-    const hasPermission = await hasCaretakerPermission(patientId);
-    return hasPermission;
+    const [isOwn, hasPermission] = await Promise.all([
+        isOwnPatient(patientId),
+        hasCaretakerPermission(patientId)
+    ]);
+    return isOwn || hasPermission;
 };
 
 const permissionChecks = {
@@ -93,7 +91,7 @@ const permissionChecks = {
     isPatient,
     hasCaretakerPermission,
     isOwnPatient,
-    hasPatientAccess,
+    hasPatientAccess
 };
 
 export default permissionChecks;

@@ -10,12 +10,9 @@ export const getPatientDetails = async (patientId) => {
         }
 
         const { data, error } = await supabase
-            .from('patient_details')
-            .select(`
-                *,
-                profiles:profiles(full_name)
-            `)
-            .eq('patient_id', patientId)
+            .from('patients')
+            .select('*')
+            .eq('id', patientId)
             .single();
 
         if (error) throw error;
@@ -34,9 +31,9 @@ export const updatePatientDetails = async (patientId, updates) => {
         }
 
         const { data, error } = await supabase
-            .from('patient_details')
+            .from('patients')
             .update(updates)
-            .eq('patient_id', patientId)
+            .eq('id', patientId)
             .select()
             .single();
 
@@ -52,11 +49,8 @@ export const updatePatientDetails = async (patientId, updates) => {
 export const getCaretakerDetails = async (caretakerId) => {
     try {
         const { data, error } = await supabase
-            .from('caretaker_details')
-            .select(`
-                *,
-                profiles:profiles(full_name)
-            `)
+            .from('caretakers')
+            .select('*')
             .eq('id', caretakerId)
             .single();
 
@@ -71,20 +65,17 @@ export const getCaretakerDetails = async (caretakerId) => {
 export const getAssignedPatients = async (caretakerId) => {
     try {
         const { data, error } = await supabase
-            .from('patient_details')
+            .from('patient_caretaker_relationships')
             .select(`
-                *,
-                profiles:profiles(full_name)
+                patient_id,
+                status,
+                patient:patients (*)
             `)
-            .eq('patient_id', (
-                supabase
-                    .from('caretaker_details')
-                    .select('assigned_patient_id')
-                    .eq('id', caretakerId)
-            ));
+            .eq('caretaker_id', caretakerId)
+            .eq('status', 'accepted');
 
         if (error) throw error;
-        return data;
+        return data?.map(rel => rel.patient) || [];
     } catch (error) {
         console.error('Error fetching assigned patients:', error);
         throw error;
@@ -94,15 +85,17 @@ export const getAssignedPatients = async (caretakerId) => {
 export const getAssignedCaretakers = async (patientId) => {
     try {
         const { data, error } = await supabase
-            .from('caretaker_details')
+            .from('patient_caretaker_relationships')
             .select(`
-                *,
-                profiles:profiles(full_name)
+                caretaker_id,
+                status,
+                caretaker:caretakers (*)
             `)
-            .eq('assigned_patient_id', patientId);
+            .eq('patient_id', patientId)
+            .eq('status', 'accepted');
 
         if (error) throw error;
-        return data;
+        return data?.map(rel => rel.caretaker) || [];
     } catch (error) {
         console.error('Error fetching assigned caretakers:', error);
         throw error;
@@ -114,13 +107,13 @@ export const updateMedicalHistory = async (patientId, medicalHistory) => {
     try {
         const hasAccess = await hasPatientAccess(patientId);
         if (!hasAccess) {
-            throw new Error('You do not have permission to update medical history');
+            throw new Error('You do not have permission to update this patient\'s medical history');
         }
 
         const { data, error } = await supabase
-            .from('patient_details')
-            .update({ medical_history: medicalHistory })
-            .eq('patient_id', patientId)
+            .from('patients')
+            .update({ medical_conditions: medicalHistory })
+            .eq('id', patientId)
             .select()
             .single();
 
@@ -136,13 +129,13 @@ export const updateMedications = async (patientId, medications) => {
     try {
         const hasAccess = await hasPatientAccess(patientId);
         if (!hasAccess) {
-            throw new Error('You do not have permission to update medications');
+            throw new Error('You do not have permission to update this patient\'s medications');
         }
 
         const { data, error } = await supabase
-            .from('patient_details')
+            .from('patients')
             .update({ medications })
-            .eq('patient_id', patientId)
+            .eq('id', patientId)
             .select()
             .single();
 
@@ -154,18 +147,20 @@ export const updateMedications = async (patientId, medications) => {
     }
 };
 
-// Emergency Contact Access
 export const updateEmergencyContact = async (patientId, emergencyContact) => {
     try {
         const hasAccess = await hasPatientAccess(patientId);
         if (!hasAccess) {
-            throw new Error('You do not have permission to update emergency contact');
+            throw new Error('You do not have permission to update this patient\'s emergency contact');
         }
 
         const { data, error } = await supabase
-            .from('patient_details')
-            .update({ emergency_contact: emergencyContact })
-            .eq('patient_id', patientId)
+            .from('patients')
+            .update({
+                emergency_contact: emergencyContact.name,
+                emergency_contact_number: emergencyContact.phone
+            })
+            .eq('id', patientId)
             .select()
             .single();
 
@@ -185,7 +180,7 @@ const dataAccess = {
     getAssignedCaretakers,
     updateMedicalHistory,
     updateMedications,
-    updateEmergencyContact,
+    updateEmergencyContact
 };
 
 export default dataAccess;
