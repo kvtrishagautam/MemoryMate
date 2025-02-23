@@ -75,13 +75,22 @@ export default function Home() {
       </View>
 
       <ScrollView style={styles.taskList}>
+        <Link href="/task" asChild>
+          <TouchableOpacity style={styles.viewAllTasks}>
+            <Text style={styles.viewAllTasksText}>View All Tasks</Text>
+            <Ionicons name="arrow-forward" size={20} color="#6B4EFF" />
+          </TouchableOpacity>
+        </Link>
         {tasks.map(task => (
-          <TaskItem
-            key={task.id}
-            task={task}
-            completed={task.completed}
-            onToggle={() => toggleTask(task.id)}
-          />
+          <Link href="/task" asChild key={task.id}>
+            <TouchableOpacity>
+              <TaskItem
+                task={task}
+                completed={task.completed}
+                onToggle={() => toggleTask(task.id)}
+              />
+            </TouchableOpacity>
+          </Link>
         ))}
       </ScrollView>
 
@@ -184,5 +193,19 @@ const styles = StyleSheet.create({
   },
   navItem: {
     padding: 8,
+  },
+  viewAllTasks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#F5F3FF',
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  viewAllTasksText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B4EFF',
   },
 });

@@ -17,7 +17,7 @@ const PatientHome = () => {
   const router = useRouter();
   
   const navigateToTask = () => {
-    router.push('/(app)/task');
+    router.push('/task');
   };
 
   const userInfo = {

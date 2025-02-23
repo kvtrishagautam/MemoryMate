@@ -12,7 +12,7 @@ const Task = () => {
       title: 'Task1',
       description: 'Solve a simple puzzle or play a matching game.',
       completed: false,
-    },  
+    },
     {
       id: 2,
       title: 'Task1',
@@ -98,8 +98,6 @@ const Task = () => {
     </SafeAreaView>
   );
 };
-
-export default Task;
 
 const styles = StyleSheet.create({
   container: {

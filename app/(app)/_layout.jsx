@@ -6,6 +6,9 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
       }}
-    />
+    >
+      <Stack.Screen name="index" />
+      <Stack.Screen name="task" />
+    </Stack>
   );
 }
