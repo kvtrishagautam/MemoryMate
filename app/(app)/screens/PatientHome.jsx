@@ -23,7 +23,7 @@ const PatientHome = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>MemoryMate</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/screens/SettingsScreen')}>
           <Ionicons name="settings-outline" size={24} color="#666" />
         </TouchableOpacity>
       </View>
