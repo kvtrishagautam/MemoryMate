@@ -15,14 +15,18 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to location to show your current position on the map.",
+        "NSLocationAlwaysUsageDescription": "This app needs access to location to show your current position on the map."
+      },
       "config": {
         "googleMapsApiKey": "YOUR_API_KEY"
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/splash.png",
-        "backgroundColor": "#000000"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -30,7 +34,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_API_KEY"
+          "apiKey": "YOUR_ANDROID_MAPS_API_KEY"
         }
       }
     },

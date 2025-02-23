@@ -1,42 +1,21 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, Platform, Text, Linking, TouchableOpacity } from 'react-native';
 
 const WebMap = ({ location, homeLocation }) => {
   if (!location) return null;
 
-  // Only load the map component on web platform
+  // For web platform
   if (Platform.OS === 'web') {
-    useEffect(() => {
-      // Add Leaflet CSS
-      const linkElement = document.createElement('link');
-      linkElement.rel = 'stylesheet';
-      linkElement.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(linkElement);
-
-      // Add Leaflet JS
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = initMap;
-      document.head.appendChild(script);
-
-      return () => {
-        document.head.removeChild(linkElement);
-        document.head.removeChild(script);
-      };
-    }, []);
-
     const initMap = () => {
-      // Create map instance
       const L = window.L;
       const map = L.map('map', {
         zoomControl: true,
         attributionControl: true
       }).setView(
         [location.coords.latitude, location.coords.longitude],
-        16 // Increased zoom level for better detail
+        16
       );
 
-      // Add OpenStreetMap tiles
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: ' OpenStreetMap contributors'
@@ -122,11 +101,51 @@ const WebMap = ({ location, homeLocation }) => {
       recenterButton.addTo(map);
     };
 
-    return <div id="map" style={{ width: '100%', height: '100%', borderRadius: '12px' }} />;
+    return (
+      <div>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" onload="initMap()"></script>
+        <div id="map" style={{ width: '100%', height: '100%', borderRadius: '12px' }} />
+      </div>
+    );
   }
 
-  // Return empty view for non-web platforms
-  return <View style={styles.container} />;
+  // For mobile platforms, show coordinates and open in maps button
+  const openInMaps = () => {
+    const scheme = Platform.select({
+      ios: 'maps:0,0?q=',
+      android: 'geo:0,0?q='
+    });
+    const latLng = `${location.coords.latitude},${location.coords.longitude}`;
+    const label = 'Your Location';
+    const url = Platform.select({
+      ios: `${scheme}${label}@${latLng}`,
+      android: `${scheme}${latLng}(${label})`
+    });
+
+    Linking.openURL(url);
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.coordinatesContainer}>
+        <Text style={styles.coordinatesText}>
+          Latitude: {location.coords.latitude.toFixed(6)}°
+        </Text>
+        <Text style={styles.coordinatesText}>
+          Longitude: {location.coords.longitude.toFixed(6)}°
+        </Text>
+        {location.coords.accuracy && (
+          <Text style={styles.accuracyText}>
+            Accuracy: ±{Math.round(location.coords.accuracy)}m
+          </Text>
+        )}
+      </View>
+      <TouchableOpacity style={styles.mapButton} onPress={openInMaps}>
+        <Text style={styles.mapButtonText}>Open in Maps</Text>
+      </TouchableOpacity>
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -134,6 +153,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
     borderRadius: 12,
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coordinatesContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  coordinatesText: {
+    fontSize: 18,
+    color: '#333',
+    marginBottom: 8,
+    fontFamily: Platform.select({
+      ios: 'Courier',
+      android: 'monospace',
+    }),
+  },
+  accuracyText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 8,
+  },
+  mapButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  mapButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
