@@ -1,2 +1,2 @@
-import PatientDashboardScreen from '../../screens/patient/PatientDashboardScreen';
-export default PatientDashboardScreen;
+import PatientHome from '../screens/PatientHome.jsx';
+export default PatientHome;
