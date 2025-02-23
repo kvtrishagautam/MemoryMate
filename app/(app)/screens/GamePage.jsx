@@ -3,13 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-const GameCard = ({ title, description, onPress }) => (
+const GameCard = ({ title, description, onPress, imageSource }) => (
   <TouchableOpacity style={styles.gameCard} onPress={onPress}>
     <View style={styles.imageSection}>
       <Image 
-        source={require('../../../assets/gameimg/game1.png')}
+        source={imageSource || require('../../../assets/gameimg/game1.png')}
         style={styles.gameImage}
-        resizeMode="cover"
+        resizeMode="contain"
       />
     </View>
     <View style={styles.textSection}>
@@ -37,11 +37,13 @@ const GamePage = () => {
           title="Memory Pair game"
           description="A simple matching pairs game where players flip over cards to find matching pairs"
           onPress={() => router.push('/screens/MemoryCardGame')}
+          imageSource={require('../../../assets/gameimg/game1.png')}
         />
         <GameCard 
-          title="Memory Pair game"
-          description="A simple matching pairs game where players flip over cards to find matching pairs"
-          onPress={() => router.push('/screens/MemoryCardGame')}
+          title="Daily Routine Recall"
+          description="Daily Routine Recall is a memory game where players answer simple questions about their day using voice or text, helping strengthen recall and engagement."
+          onPress={() => router.push('/(app)/screens/DailyRoutineRecall')}
+          imageSource={require('../../../assets/gameimg/game2.png')}
         />
       </ScrollView>
 
@@ -109,7 +111,7 @@ const styles = StyleSheet.create({
   },
   imageSection: {
     height: '70%',
-    backgroundColor: '#ff4757',
+    backgroundColor: '#F7F6EE',
     width: '100%',
   },
   gameImage: {
