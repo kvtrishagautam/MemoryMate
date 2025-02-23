@@ -29,7 +29,13 @@ const PatientCard = ({ patient, onActionPress }) => {
           <TouchableOpacity 
             key={index} 
             style={styles.actionButton}
-            onPress={() => onActionPress(button.action, patient)}
+            onPress={() => {
+              if (button.action === 'tasks') {
+                router.push('/screens/caretaker/CompletedTasksScreen');
+              } else {
+                onActionPress(button.action, patient);
+              }
+            }}
           >
             <View style={[styles.iconBackground, { backgroundColor: button.color }]}>
               <Ionicons name={button.icon} size={32} color="white" />
@@ -136,10 +142,10 @@ const CaretakerDashboardScreen = () => {
         router.push(`/(app)/caretaker/track/${patient.id}`);
         break;
       case 'geofence':
-        router.push(`/(app)/caretaker/geofence/${patient.id}`);
+        router.push('/screens/caretaker/CompletedTasksScreen');
         break;
       case 'tasks':
-        router.push(`/(app)/caretaker/tasks/${patient.id}`);
+        router.push('/screens/caretaker/CompletedTasksScreen');
         break;
     }
   };
@@ -155,10 +161,18 @@ const CaretakerDashboardScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.welcomeContainer}>
-          <Text style={styles.welcomeText}>Welcome </Text>
-          <Text style={styles.caretakerName}>{caretakerName}</Text>
-        </View>
+        <Text style={styles.headerText}>Caretaker Dashboard</Text>
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={() => router.push('/screens/caretaker/CompletedTasksScreen')}
+        >
+          <Ionicons name="add-circle" size={24} color="#4CAF50" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.welcomeContainer}>
+        <Text style={styles.welcomeText}>Welcome </Text>
+        <Text style={styles.caretakerName}>{caretakerName}</Text>
       </View>
 
       {patients.map((patient, index) => (
@@ -191,6 +205,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     padding: 20,
     borderRadius: 20,
+    elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerText: {
+    fontSize: 20,
+    color: '#6B7280',
+  },
+  iconButton: {
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#F7FAFC',
     elevation: 2,
   },
   welcomeContainer: {

@@ -14,7 +14,7 @@ const PatientHome = () => {
   const router = useRouter();
   
   const navigateToTask = () => {
-    router.push('/(app)/screens/TaskPage');
+    router.push('/(app)/task');
   };
 
   const userInfo = {
