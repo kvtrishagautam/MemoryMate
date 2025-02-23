@@ -7,10 +7,10 @@ import { useRouter } from 'expo-router';
 
 const PatientCard = ({ patient, onActionPress }) => {
   const actionButtons = [
-    { icon: 'notifications', text: 'Reminders', color: '#FF6B6B', action: 'reminders' },
-    { icon: 'location', text: 'Track', color: '#4ECDC4', action: 'track' },
-    { icon: 'map', text: 'Geofence', color: '#45B7D1', action: 'geofence' },
-    { icon: 'list', text: 'Tasks', color: '#96CEB4', action: 'tasks' }
+    { icon: 'notifications', text: 'Add Reminder', color: '#FF6B6B', action: 'reminders' },
+    { icon: 'location', text: 'Track Location', color: '#4ECDC4', action: 'track' },
+    { icon: 'stats-chart', text: 'View Status', color: '#45B7D1', action: 'geofence' },
+    { icon: 'add-circle', text: 'Add Task', color: '#96CEB4', action: 'tasks' }
   ];
 
   return (
