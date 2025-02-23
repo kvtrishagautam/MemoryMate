@@ -12,21 +12,36 @@ export default function LoginScreen() {
   });
   const [loading, setLoading] = useState(false);
 
+  // Basic email validation
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   async function handleLogin() {
     if (!formData.email || !formData.password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
+    if (!isValidEmail(formData.email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log('Attempting login with email:', formData.email);
+      
       // First try patient login
       const { data: patientData, error: patientError } = await supabase
         .from('patients')
         .select('*')
-        .eq('email', formData.email)
+        .eq('email', formData.email.trim().toLowerCase())
         .eq('password', formData.password)
         .single();
+
+      console.log('Patient login attempt:', patientData ? 'Found' : 'Not found');
 
       if (patientData) {
         // Store user data in context
@@ -44,9 +59,11 @@ export default function LoginScreen() {
       const { data: caretakerData, error: caretakerError } = await supabase
         .from('caretakers')
         .select('*')
-        .eq('email', formData.email)
+        .eq('email', formData.email.trim().toLowerCase())
         .eq('password', formData.password)
         .single();
+
+      console.log('Caretaker login attempt:', caretakerData ? 'Found' : 'Not found');
 
       if (caretakerData) {
         // Store user data in context
@@ -61,7 +78,7 @@ export default function LoginScreen() {
       }
 
       // If we get here, no user was found
-      Alert.alert('Error', 'Invalid email or password');
+      Alert.alert('Error', 'Invalid email or password. Please check your credentials and try again.');
       
     } catch (error) {
       console.error('Login Error:', error);
@@ -71,6 +88,13 @@ export default function LoginScreen() {
     }
   }
 
+  const handleEmailChange = (text) => {
+    setFormData(prev => ({
+      ...prev,
+      email: text.trim().toLowerCase()
+    }));
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
@@ -78,16 +102,17 @@ export default function LoginScreen() {
 
       <TextInput
         style={styles.input}
-        onChangeText={(text) => setFormData({ ...formData, email: text })}
+        onChangeText={handleEmailChange}
         value={formData.email}
         placeholder="E-mail"
         keyboardType="email-address"
         autoCapitalize="none"
+        autoCorrect={false}
       />
 
       <TextInput
         style={styles.input}
-        onChangeText={(text) => setFormData({ ...formData, password: text })}
+        onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
         value={formData.password}
         placeholder="Password"
         secureTextEntry
@@ -98,7 +123,7 @@ export default function LoginScreen() {
         onPress={handleLogin}
         disabled={loading}
       >
-        <Text style={styles.buttonText}>Login</Text>
+        <Text style={styles.buttonText}>{loading ? 'Logging in...' : 'Login'}</Text>
       </TouchableOpacity>
 
       <View style={styles.signupContainer}>

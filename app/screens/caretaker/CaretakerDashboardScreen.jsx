@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -191,7 +191,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     padding: 20,
     borderRadius: 20,
-    elevation: 2,
+    ...Platform.select({
+      ios: {
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)'
+      },
+      android: {
+        elevation: 2
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)'
+      }
+    })
   },
   welcomeContainer: {
     flexDirection: 'row',
@@ -215,11 +225,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    ...Platform.select({
+      ios: {
+        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)'
+      },
+      android: {
+        elevation: 5
+      },
+      web: {
+        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)'
+      }
+    })
   },
   patientInfo: {
     marginBottom: 24,
@@ -264,11 +280,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    ...Platform.select({
+      ios: {
+        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.2)'
+      },
+      android: {
+        elevation: 3
+      },
+      web: {
+        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.2)'
+      }
+    })
   },
   actionText: {
     fontSize: 14,
