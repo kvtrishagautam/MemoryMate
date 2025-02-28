@@ -1,162 +1,160 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
-} from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../../context/AuthContext';
+import { useRouter } from 'expo-router';
+
+const PatientCard = ({ patient, onActionPress }) => {
+  const router = useRouter(); // Add this line to get router instance
+  const actionButtons = [
+    { icon: 'notifications', text: 'Add Reminder', color: '#FF6B6B', action: 'reminders' },
+    { icon: 'location', text: 'Track Location', color: '#4ECDC4', action: 'track' },
+    { icon: 'stats-chart', text: 'View Status', color: '#45B7D1', action: 'geofence' },
+    { icon: 'add-circle', text: 'Add Task', color: '#96CEB4', action: 'tasks' }
+  ];
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.patientInfo}>
+        <Text style={styles.patientLabel}>Your Care Patient</Text>
+        <Text style={styles.name}>{patient.full_name}</Text>
+        <Text style={styles.detail}>Age: {patient.age}</Text>
+        {patient.medical_conditions && (
+          <Text style={styles.detail}>Medical Conditions: {patient.medical_conditions}</Text>
+        )}
+      </View>
+      
+      <View style={styles.actionsContainer}>
+        {actionButtons.map((button, index) => (
+          <TouchableOpacity 
+            key={index} 
+            style={styles.actionButton}
+            onPress={() => {
+              if (button.action === 'tasks') {
+                router.push('/(app)/caretaker/add-task');
+              } else {
+                onActionPress(button.action, patient);
+              }
+            }}
+          >
+            <View style={[styles.iconBackground, { backgroundColor: button.color }]}>
+              <Ionicons name={button.icon} size={32} color="white" />
+            </View>
+            <Text style={[styles.actionText, { color: button.color }]}>{button.text}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+};
 
 const CaretakerDashboardScreen = () => {
-  const router = useRouter();
-  const { signOut } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [caretakerDetails, setCaretakerDetails] = useState(null);
   const [patients, setPatients] = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [caretakerName, setCaretakerName] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
-    loadCaretakerData();
+    fetchPatients();
   }, []);
 
-  useEffect(() => {
-    if (caretakerDetails?.id) {
-      fetchPatients();
-      fetchPendingRequests();
-    }
-  }, [caretakerDetails]);
-
-  const loadCaretakerData = async () => {
+  const fetchPatients = async () => {
     try {
       const userDataStr = await AsyncStorage.getItem('userData');
       if (!userDataStr) {
+        console.log('No user data found');
         router.replace('/auth/login');
         return;
       }
 
       const userData = JSON.parse(userDataStr);
-      if (userData.role !== 'caretaker') {
-        Alert.alert('Error', 'Only caretakers can access this screen');
-        router.back();
-        return;
-      }
+      console.log('Fetching patients for caretaker:', userData);
+      setCaretakerName(userData.fullName); // Set caretaker name from userData
 
-      // Get caretaker details
+      // First get caretaker details to get the user_id
       const { data: caretakerData, error: caretakerError } = await supabase
         .from('caretakers')
-        .select('*')
+        .select('user_id')
         .eq('id', userData.id)
         .single();
 
-      if (caretakerError) throw caretakerError;
-      setCaretakerDetails(caretakerData);
-    } catch (error) {
-      console.error('Error loading caretaker data:', error);
-      Alert.alert('Error', 'Failed to load dashboard data');
-    }
-  };
+      if (caretakerError) {
+        console.error('Error fetching caretaker:', caretakerError);
+        throw caretakerError;
+      }
 
-  async function fetchPatients() {
-    if (!caretakerDetails?.id) return;
-    
-    try {
-      const { data: relationships, error } = await supabase
+      // Get patient IDs from relationships table
+      const { data: relationships, error: relError } = await supabase
         .from('patient_caretaker_relationships')
-        .select(`
-          patient:patients (
-            user_id,
-            full_name,
-            emergency_contact_number,
-            medical_conditions
-          )
-        `)
-        .eq('caretaker_id', parseInt(caretakerDetails.id))
+        .select('patient_id')
+        .eq('caretaker_id', caretakerData.user_id)
         .eq('status', 'accepted');
 
-      if (error) throw error;
-
-      if (relationships) {
-        const validPatients = relationships
-          .map(rel => rel.patient)
-          .filter(patient => patient !== null);
-        setPatients(validPatients);
+      if (relError) {
+        console.error('Error fetching relationships:', relError);
+        throw relError;
       }
+
+      if (!relationships || relationships.length === 0) {
+        console.log('No patient relationships found');
+        setPatients([]);
+        return;
+      }
+
+      // Get patient details from patients table
+      const patientIds = relationships.map(rel => rel.patient_id);
+      const { data: patientDetails, error: patientError } = await supabase
+        .from('patients')
+        .select(`
+          full_name,
+          age,
+          medical_conditions
+        `)
+        .in('user_id', patientIds);
+
+      if (patientError) {
+        console.error('Error fetching patient details:', patientError);
+        throw patientError;
+      }
+
+      const validPatients = patientDetails.map(patient => ({
+        full_name: patient.full_name || 'Unknown',
+        age: patient.age,
+        medical_conditions: patient.medical_conditions
+      })).filter(patient => patient.full_name !== 'Unknown');
+
+      console.log('Valid patients:', validPatients);
+      setPatients(validPatients);
+
     } catch (error) {
       console.error('Error fetching patients:', error);
-    }
-  }
-
-  async function fetchPendingRequests() {
-    if (!caretakerDetails?.id) return;
-
-    try {
-      const { data: requests, error } = await supabase
-        .from('patient_caretaker_relationships')
-        .select(`
-          id,
-          patient:patients (
-            user_id,
-            full_name,
-            emergency_contact_number
-          ),
-          status
-        `)
-        .eq('caretaker_id', parseInt(caretakerDetails.id))
-        .in('status', ['pending', 'rejected']);
-
-      if (error) throw error;
-
-      if (requests) {
-        setPendingRequests(requests);
-      }
-    } catch (error) {
-      console.error('Error fetching pending requests:', error);
     } finally {
       setLoading(false);
     }
-  }
-
-  const handlePatientPress = (patient) => {
-    // Navigate to patient details (to be implemented)
-    Alert.alert('View Patient', `Viewing details for ${patient.full_name}`);
   };
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.replace('/auth/login');
-    } catch (error) {
-      console.error('Error signing out:', error);
+  const handleActionPress = (action, patient) => {
+    switch (action) {
+      case 'reminders':
+        router.push(`/(app)/caretaker/reminders/${patient.id}`);
+        break;
+      case 'track':
+        router.push(`/(app)/caretaker/track/${patient.id}`);
+        break;
+      case 'geofence':
+        router.push('/screens/caretaker/CompletedTasksScreen');
+        break;
+      case 'tasks':
+        router.push('/(app)/caretaker/add-task');
+        break;
     }
   };
 
-  const renderPatientCard = ({ item }) => (
-    <TouchableOpacity
-      style={styles.patientCard}
-      onPress={() => handlePatientPress(item)}
-    >
-      <View style={styles.patientInfo}>
-        <Text style={styles.patientName}>{item.full_name}</Text>
-        <Text style={styles.patientDetails}>Age: {item.age}</Text>
-        <Text style={styles.patientDetails}>Gender: {item.gender}</Text>
-        <Text style={styles.medicalConditions}>
-          Conditions: {item.medical_conditions?.join(', ') || 'None listed'}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+      <View style={[styles.container, styles.centerContent]}>
+        <Text>Loading patients...</Text>
       </View>
     );
   }
@@ -164,53 +162,33 @@ const CaretakerDashboardScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.nameText}>{caretakerDetails?.full_name}</Text>
-        </View>
-        <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
-          <Text style={styles.signOutText}>Sign Out</Text>
+        <Text style={styles.headerText}>Caretaker Dashboard</Text>
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={() => router.push('/(app)/caretaker/add-task')}
+        >
+          <Ionicons name="add-circle" size={24} color="#4CAF50" />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Add Patient</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Schedule Visit</Text>
-        </TouchableOpacity>
+      <View style={styles.welcomeContainer}>
+        <Text style={styles.welcomeText}>Welcome </Text>
+        <Text style={styles.caretakerName}>{caretakerName}</Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Connection Requests</Text>
-        {pendingRequests.map((request) => (
-          <View key={request.id} style={styles.requestCard}>
-            <Text style={styles.patientName}>{request.patient.full_name}</Text>
-            <Text>Contact: {request.patient.emergency_contact_number}</Text>
-            <Text style={[
-              styles.statusText,
-              request.status === 'pending' ? styles.pendingStatus : styles.rejectedStatus
-            ]}>
-              Status: {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Patients</Text>
-        {patients.map((patient) => (
-          <View key={patient.user_id} style={styles.patientCard}>
-            <Text style={styles.patientName}>{patient.full_name}</Text>
-            <Text>Contact: {patient.emergency_contact_number}</Text>
-            {patient.medical_conditions && patient.medical_conditions.length > 0 && (
-              <Text style={styles.medicalHistory}>
-                Medical Conditions: {patient.medical_conditions.join(', ')}
-              </Text>
-            )}
-          </View>
-        ))}
+      {patients.map((patient, index) => (
+        <PatientCard 
+          key={index} 
+          patient={patient}
+          onActionPress={(action) => handleActionPress(action, patient)}
+        />
+      ))}
+      
+      <View style={styles.statusContainer}>
+        <Text style={styles.statusText}>
+          Current Status: {patients.length > 0 ? 'Active Care' : 'No Patients'}
+        </Text>
+        <Text style={styles.lastUpdated}>Last updated: Just now</Text>
       </View>
     </ScrollView>
   );
@@ -219,122 +197,130 @@ const CaretakerDashboardScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    padding: 16,
+    backgroundColor: '#F0F7FF',
+    paddingTop: 8,
   },
-  centerContainer: {
-    flex: 1,
+  header: {
+    marginBottom: 24,
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 20,
+    elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerText: {
+    fontSize: 20,
+    color: '#6B7280',
+  },
+  iconButton: {
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#F7FAFC',
+    elevation: 2,
+  },
+  welcomeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  welcomeText: {
+    fontSize: 20,
+    color: '#6B7280',
+  },
+  caretakerName: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2D3748',
+  },
+  centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 20,
     padding: 20,
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  welcomeText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  nameText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  signOutButton: {
-    padding: 10,
-  },
-  signOutText: {
-    color: '#ff4444',
-    fontSize: 16,
-  },
-  quickActions: {
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionButton: {
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 10,
-    width: '48%',
-  },
-  actionButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: 16,
-  },
-  section: {
-    flex: 1,
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  patientList: {
-    paddingBottom: 20,
-  },
-  patientCard: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    marginBottom: 16,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   patientInfo: {
-    flex: 1,
+    marginBottom: 24,
+    backgroundColor: '#F7FAFC',
+    padding: 16,
+    borderRadius: 12,
   },
-  patientName: {
-    fontSize: 18,
+  patientLabel: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontWeight: '500',
+  },
+  name: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#2D3748',
+    marginBottom: 12,
   },
-  patientDetails: {
+  detail: {
     fontSize: 16,
-    color: '#666',
-    marginTop: 5,
+    color: '#4A5568',
+    marginBottom: 8,
   },
-  medicalConditions: {
+  actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  actionButton: {
+    alignItems: 'center',
+    width: '45%',
+    marginVertical: 12,
+  },
+  iconBackground: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  actionText: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-    fontStyle: 'italic',
+    fontWeight: '600',
+    marginTop: 4,
   },
-  noDataText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  requestCard: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    elevation: 2,
+  statusContainer: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 16,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4ECDC4',
   },
   statusText: {
-    marginTop: 5,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2D3748',
   },
-  pendingStatus: {
-    color: '#FFA000',
-  },
-  rejectedStatus: {
-    color: '#f44336',
-  },
-  medicalHistory: {
+  lastUpdated: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-    fontStyle: 'italic',
+    color: '#718096',
+    marginTop: 8,
   },
 });
 

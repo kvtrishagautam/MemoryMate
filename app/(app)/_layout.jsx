@@ -24,7 +24,7 @@ export default function AppLayout() {
       const isInAuthGroup = segments[0] === 'auth';
 
       if (user.role === 'patient') {
-        router.replace('/(app)/patient/home');
+        router.push('/(app)/screens/PatientHome');
       } else if (user.role === 'caretaker') {
         router.replace('/(app)/caretaker/dashboard');
       }
@@ -39,6 +39,16 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
       }}
-    />
+    >
+      <Stack.Screen 
+        name="screens/PatientHome" 
+        options={{
+          title: 'Patient Dashboard',
+          animation: 'slide_from_right'
+        }}
+      />
+      <Stack.Screen name="task" />
+      <Stack.Screen name="location" />
+    </Stack>
   );
 }

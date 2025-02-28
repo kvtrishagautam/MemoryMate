@@ -115,6 +115,51 @@ const initializeTables = async () => {
         console.log('Profiles table created successfully');
       }
     }
+
+    // Check if tasks table exists
+    const { error: checkTasksError } = await supabase
+      .from('tasks')
+      .select('id')
+      .limit(1);
+
+    // If tasks table doesn't exist, create it
+    if (checkTasksError && checkTasksError.message.includes('relation "tasks" does not exist')) {
+      console.log('Creating tasks table...');
+      
+      const { error: createTasksError } = await supabase
+        .from('_sql')
+        .insert({
+          query: `
+            CREATE TABLE IF NOT EXISTS public.tasks (
+              id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+              title TEXT NOT NULL,
+              description TEXT,
+              completed BOOLEAN DEFAULT FALSE,
+              patient_id UUID REFERENCES public.users(id),
+              created_at TIMESTAMPTZ DEFAULT NOW(),
+              updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            -- Enable Row Level Security
+            ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+
+            -- Create policies
+            CREATE POLICY "Users can read their own tasks" 
+              ON public.tasks FOR SELECT
+              USING (patient_id = current_setting('app.user_id')::UUID);
+            
+            CREATE POLICY "Users can update their own tasks" 
+              ON public.tasks FOR UPDATE
+              USING (patient_id = current_setting('app.user_id')::UUID);
+          `
+        });
+
+      if (createTasksError) {
+        console.error('Error creating tasks table:', createTasksError);
+      } else {
+        console.log('Tasks table created successfully');
+      }
+    }
   } catch (error) {
     console.error('Database initialization error:', error);
   }
@@ -313,6 +358,56 @@ export const database = {
         console.error('Patient getCaretakers error:', error);
         throw error;
       }
+    }
+  }
+};
+
+export const TaskService = {
+  getTasks: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error getting tasks:', error);
+      return null;
+    }
+  },
+
+  createTask: async (task) => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([task])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating task:', error);
+      return null;
+    }
+  },
+
+  updateTaskCompletion: async (taskId, completed) => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({ completed, updated_at: new Date() })
+        .eq('id', taskId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating task:', error);
+      return null;
     }
   }
 };

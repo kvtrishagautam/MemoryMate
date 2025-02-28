@@ -36,7 +36,7 @@ export default function LoginScreen() {
           role: 'patient',
           fullName: patientData.full_name
         }));
-        router.replace('/(app)/patient/home');
+        router.push('/(app)/screens/PatientHome');
         return;
       }
 
